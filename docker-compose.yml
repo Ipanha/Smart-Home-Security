@@ -1,0 +1,59 @@
+services:
+  # The User & Home API Service
+  user-home-service:
+    build:
+      context: ./services/user-home-service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./services/user-home-service:/var/www/html
+    depends_on:
+      - db-user-home
+
+  # The Database for the User & Home Service
+  db-user-home:
+    image: mysql:8.0
+    ports:
+      - "33061:3306"
+    environment:
+      MYSQL_DATABASE: user_home_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - user_home_db_data:/var/lib/mysql
+
+  # The Authentication API Service
+  authentication-service:
+    build:
+      context: ./services/authentication-service
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000" # Use a new port
+    volumes:
+      - ./services/authentication-service:/var/www/html
+    depends_on:
+      - db-auth
+    environment: # Add this environment block
+      DB_HOST: db-auth
+      DB_DATABASE: auth_db
+      DB_USERNAME: user
+      DB_PASSWORD: password
+
+  # The Database for the Authentication Service
+  db-auth:
+    image: mysql:8.0
+    ports:
+      - "33062:3306"
+    environment:
+      MYSQL_DATABASE: auth_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - auth_db_data:/var/lib/mysql
+
+volumes:
+  user_home_db_data:
+  auth_db_data:

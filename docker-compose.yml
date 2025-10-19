@@ -11,9 +11,24 @@ services:
     depends_on:
       - user-home-service
       - authentication-service
-    networks: # <-- Add this
+      - device-service
+      - mqtt-broker
+    networks:
       - smart-home-net
+    links:
+      - "user-home-service"
+      - "authentication-service"
+      - "device-service" 
+      - "mqtt-broker"
 
+    mqtt-broker:
+    image: eclipse-mosquitto:latest
+    ports:
+      - "1883:1883" # Standard MQTT port
+      - "9001:9001" # For WebSocket connections
+    networks:
+      - smart-home-net
+      
   # The User & Home API Service
   user-home-service:
     build:
@@ -25,7 +40,7 @@ services:
       - ./services/user-home-service:/var/www/html
     depends_on:
       - db-user-home
-    networks: # <-- Add this
+    networks:
       - smart-home-net
 
   # The Database for the User & Home Service
@@ -40,7 +55,7 @@ services:
       MYSQL_ROOT_PASSWORD: rootpassword
     volumes:
       - user_home_db_data:/var/lib/mysql
-    networks: # <-- Add this
+    networks:
       - smart-home-net
 
   # The Authentication API Service
@@ -59,7 +74,7 @@ services:
       DB_DATABASE: auth_db
       DB_USERNAME: user
       DB_PASSWORD: password
-    networks: # <-- Add this
+    networks:
       - smart-home-net
 
   # The Database for the Authentication Service
@@ -74,10 +89,45 @@ services:
       MYSQL_ROOT_PASSWORD: rootpassword
     volumes:
       - auth_db_data:/var/lib/mysql
-    networks: # <-- Add this
+    networks:
       - smart-home-net
 
-# --- DEFINE THE SHARED NETWORK AT THE BOTTOM ---
+  # --- EDIT HERE: ADD THE NEW DEVICE SERVICE AND ITS DATABASE ---
+  
+  # The Device Management Service
+  device-service:
+    build:
+      context: ./services/device-service
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000" # Use a new port
+    volumes:
+      - ./services/device-service:/var/www/html
+    depends_on:
+      - db-device
+    environment:
+      DB_HOST: db-device
+      DB_DATABASE: device_db
+      DB_USERNAME: user
+      DB_PASSWORD: password
+    networks:
+      - smart-home-net
+
+  # The Database for the Device Management Service
+  db-device:
+    image: mysql:8.0
+    ports:
+      - "33063:3306" # Use a new port
+    environment:
+      MYSQL_DATABASE: device_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - device_db_data:/var/lib/mysql
+    networks:
+      - smart-home-net
+
 networks:
   smart-home-net:
     driver: bridge
@@ -85,3 +135,4 @@ networks:
 volumes:
   user_home_db_data:
   auth_db_data:
+  device_db_data: 

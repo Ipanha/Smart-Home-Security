@@ -62,6 +62,8 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./services/authentication-service:/var/www/html
+    ports:                  # <--- THIS WAS MISSING
+      - "8000:8000"         # <--- THIS EXPOSES THE PORT TO YOUR BROWSER
     networks:
       - smart-home-net
     depends_on:

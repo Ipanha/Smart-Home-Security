@@ -2,43 +2,44 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\Api\AuthController;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-*/
 
-// 1. Standard Route (Listens for 'api/register')
-// This works if the Gateway strips the prefix correctly.
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
-// 2. Double-API Route (Listens for 'api/api/register')
-// This fixes the 404 you are seeing in the Debug output!
-// Since this file is already prefixed with 'api', adding '/api/register' here creates 'api/api/register'.
-Route::post('/api/register', [AuthController::class, 'register']);
-Route::post('/api/login', [AuthController::class, 'login']);
+Route::get('/ping', fn () => response()->json(['message' => 'pong']));
 
+Route::middleware('auth:api')->group(function () {
 
-// 3. Simple Ping Test
-Route::get('/ping', function () {
-    return response()->json(['message' => 'pong']);
+    // Admin user management
+    Route::delete('/admin/users/{id}', [AuthController::class, 'deleteUser']);
+
+    Route::get('/admin/users', function () {
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $response = Http::get('http://user-home-service:8000/api/all-users');
+        return response()->json($response->json(), $response->status());
+    });
+
+    Route::post('/homes', function (Request $request) {
+        $user = auth()->user();
+        $ownerId = ($user->role === 'admin' && $request->has('owner_id'))
+            ? $request->owner_id
+            : $user->user_id;
+
+        return Http::post('http://user-home-service:8000/api/homes', [
+            'name' => $request->name,
+            'owner_id' => $ownerId,
+            'members' => []
+        ])->json();
+    });
+
+    Route::post('/devices', fn (Request $request) =>
+        Http::post('http://device-service:8000/api/create-device', $request->all())->json()
+    );
 });
-
-// 4. THE DEBUGGER (Catches any route that didn't match above)
-Route::any('{any}', function (Request $request) {
-    return response()->json([
-        'debug_status' => 'Route Missed',
-        'message' => 'The request reached Laravel, but did not match any route.',
-        'what_laravel_saw' => [
-            'path' => $request->path(),
-            'method' => $request->method(),
-        ],
-        'available_routes' => [
-            'api/register',
-            'api/api/register'
-        ]
-    ], 404);
-})->where('any', '.*');

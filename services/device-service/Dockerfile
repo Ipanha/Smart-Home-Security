@@ -1,13 +1,17 @@
 # Start with a PHP 8.2 base image
 FROM php:8.2-cli
 
-# Install system dependencies needed for Laravel
+# Install system dependencies needed for Laravel and MongoDB
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
     libzip-dev \
     libpq-dev \
-    && docker-php-ext-install zip pdo pdo_mysql pdo_pgsql
+    libssl-dev # <-- Added for MongoDB
+
+# --- ADDED: Install the MongoDB PHP extension ---
+RUN pecl install mongodb \
+    && docker-php-ext-enable mongodb
 
 # Set the working directory
 WORKDIR /var/www/html

@@ -35,7 +35,10 @@ class AuthController extends Controller
         }
 
         // 3. Get the new user ID from the response
-        $user_id = $response->json('id');
+        $user_id = $response->json('data.id');
+        if (!$user_id) {
+    return response()->json(['message' => 'User ID missing from response', 'response' => $response->json()], 500);
+}
 
         // 4. Create the secure credential in this service's database
         $credential = AuthCredential::create([

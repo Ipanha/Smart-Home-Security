@@ -18,113 +18,90 @@ services:
     links:
       - "user-home-service"
       - "authentication-service"
-      - "device-service" 
+      - "device-service"
       - "mqtt-broker"
 
-    mqtt-broker:
+  # The MQTT Broker for real-time communication
+  mqtt-broker:
     image: eclipse-mosquitto:latest
     ports:
-      - "1883:1883" # Standard MQTT port
-      - "9001:9001" # For WebSocket connections
+      - "1883:1883"
+      - "9001:9001"
     networks:
       - smart-home-net
-      
-  # The User & Home API Service
+
+  # The User & Home API Service (NoSQL)
   user-home-service:
     build:
       context: ./services/user-home-service
       dockerfile: Dockerfile
-    ports:
-      - "8001:8000"
     volumes:
       - ./services/user-home-service:/var/www/html
+    networks:
+      - smart-home-net
     depends_on:
       - db-user-home
-    networks:
-      - smart-home-net
 
-  # The Database for the User & Home Service
+  # The Database for the User & Home Service (MongoDB)
   db-user-home:
-    image: mysql:8.0
+    image: mongo:latest
     ports:
-      - "33061:3306"
+      - "27017:27017" # Default MongoDB port
     environment:
-      MYSQL_DATABASE: user_home_db
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
     volumes:
-      - user_home_db_data:/var/lib/mysql
+      - user_home_db_data:/data/db
     networks:
       - smart-home-net
 
-  # The Authentication API Service
+  # The Authentication API Service (NoSQL)
   authentication-service:
     build:
       context: ./services/authentication-service
       dockerfile: Dockerfile
-    ports:
-      - "8002:8000"
     volumes:
       - ./services/authentication-service:/var/www/html
+    networks:
+      - smart-home-net
     depends_on:
       - db-auth
-    environment:
-      DB_HOST: db-auth
-      DB_DATABASE: auth_db
-      DB_USERNAME: user
-      DB_PASSWORD: password
-    networks:
-      - smart-home-net
 
-  # The Database for the Authentication Service
+  # The Database for the Authentication Service (MongoDB)
   db-auth:
-    image: mysql:8.0
+    image: mongo:latest
     ports:
-      - "33062:3306"
+      - "27018:27017" # Use a new external port
     environment:
-      MYSQL_DATABASE: auth_db
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
     volumes:
-      - auth_db_data:/var/lib/mysql
+      - auth_db_data:/data/db
     networks:
       - smart-home-net
 
-  # --- EDIT HERE: ADD THE NEW DEVICE SERVICE AND ITS DATABASE ---
-  
-  # The Device Management Service
+  # The Device Management Service (NoSQL)
   device-service:
     build:
       context: ./services/device-service
       dockerfile: Dockerfile
-    ports:
-      - "8003:8000" # Use a new port
     volumes:
       - ./services/device-service:/var/www/html
-    depends_on:
-      - db-device
-    environment:
-      DB_HOST: db-device
-      DB_DATABASE: device_db
-      DB_USERNAME: user
-      DB_PASSWORD: password
     networks:
       - smart-home-net
+    depends_on:
+      - db-device
 
-  # The Database for the Device Management Service
+  # The Database for the Device Management Service (MongoDB)
   db-device:
-    image: mysql:8.0
+    image: mongo:latest
     ports:
-      - "33063:3306" # Use a new port
+      - "27019:27017" # Use a new external port
     environment:
-      MYSQL_DATABASE: device_db
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
     volumes:
-      - device_db_data:/var/lib/mysql
+      - device_db_data:/data/db
     networks:
       - smart-home-net
 
@@ -135,4 +112,4 @@ networks:
 volumes:
   user_home_db_data:
   auth_db_data:
-  device_db_data: 
+  device_db_data:

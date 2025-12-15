@@ -27,6 +27,7 @@ Route::middleware(['web'])->group(function () {
 
     // Homes
     Route::post('/admin/create-home', [AdminWebController::class, 'createHome']);
+    Route::post('/admin/update-home/{id}', [AdminWebController::class, 'updateHome']);
     Route::post('/admin/delete-home/{id}', [AdminWebController::class, 'deleteHome']);
 
     // Devices

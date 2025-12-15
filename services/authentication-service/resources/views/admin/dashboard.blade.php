@@ -105,61 +105,29 @@
             @if($view_type == 'dashboard')
                 <div class="mb-8">
                     <h2 class="text-2xl font-bold text-black mb-6">Admin Dashboard</h2>
-                    
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        
                         <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-lg transition">
                             <div class="flex justify-between items-start">
                                 <div>
                                     <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Users</p>
-                                    <h3 class="text-3xl font-bold text-gray-900 mt-2">{{ count($users) ?? '24' }}</h3>
-                                    <p class="text-xs text-green-500 mt-1 font-medium">+3 this week</p>
+                                    <h3 class="text-3xl font-bold text-gray-900 mt-2">{{ count($users) ?? '0' }}</h3>
                                 </div>
                                 <div class="p-3 bg-blue-50 rounded-xl text-blue-600">
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                                 </div>
                             </div>
                         </div>
-
                         <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-lg transition">
                             <div class="flex justify-between items-start">
                                 <div>
                                     <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Active Homes</p>
-                                    <h3 class="text-3xl font-bold text-gray-900 mt-2">{{ isset($homes) ? count($homes) : '18' }}</h3>
-                                    <p class="text-xs text-gray-400 mt-1">2 offline</p>
+                                    <h3 class="text-3xl font-bold text-gray-900 mt-2">{{ isset($homes) ? count($homes) : '0' }}</h3>
                                 </div>
                                 <div class="p-3 bg-purple-50 rounded-xl text-purple-600">
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-lg transition">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Devices Online</p>
-                                    <h3 class="text-3xl font-bold text-gray-900 mt-2">142</h3>
-                                    <p class="text-xs text-green-500 mt-1 font-medium">95% uptime</p>
-                                </div>
-                                <div class="p-3 bg-green-50 rounded-xl text-green-600">
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-lg transition">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Active Alerts</p>
-                                    <h3 class="text-3xl font-bold text-gray-900 mt-2">3</h3>
-                                    <p class="text-xs text-orange-500 mt-1 font-medium">Needs attention</p>
-                                </div>
-                                <div class="p-3 bg-orange-50 rounded-xl text-orange-500">
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                                </div>
-                            </div>
-                        </div>
-
                     </div>
                 </div>
             @endif
@@ -184,30 +152,37 @@
                         </thead>
                         <tbody class="divide-y divide-gray-50">
                             @foreach($users as $index => $user)
-                            @php $deleteId = $user->user_id ?? $user->_id ?? $user->id ?? ''; @endphp
+                            @php 
+                                // FIX: Define variables here to prevent "Undefined variable" error
+                                $u = (object)$user; 
+                                $deleteId = $u->user_id ?? $u->_id ?? $u->id ?? '';
+                                $name = $u->name ?? 'Unknown';
+                                $email = $u->email ?? 'No Email';
+                                $role = $u->role ?? 'User';
+                            @endphp
                             <tr class="hover:bg-gray-50 transition-colors">
                                 <td class="px-6 py-4 text-center text-gray-400 text-sm">{{ $index + 1 }}</td>
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-3">
                                         <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-500 font-bold">
-                                            {{ substr($user->name ?? 'U', 0, 1) }}
+                                            {{ substr($name, 0, 1) }}
                                         </div>
                                         <div>
-                                            <div class="font-bold text-gray-900">{{ $user->name ?? 'Unknown' }}</div>
-                                            <div class="text-sm text-gray-400">{{ $user->email }}</div>
+                                            <div class="font-bold text-gray-900">{{ $name }}</div>
+                                            <div class="text-sm text-gray-400">{{ $email }}</div>
                                         </div>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide {{ ($user->role ?? '') == 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-blue-50 text-blue-600' }}">
-                                        {{ $user->role ?? 'User' }}
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide {{ $role == 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-blue-50 text-blue-600' }}">
+                                        {{ $role }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-right">
-                                    <button onclick="openEditUserModal('{{ $deleteId }}', '{{ $user->name }}', '{{ $user->email }}')" class="text-gray-400 hover:text-blue-600 mx-2 transition">
+                                    <button onclick="openEditUserModal('{{ $deleteId }}', '{{ $name }}', '{{ $email }}')" class="text-gray-400 hover:text-blue-600 mx-2 transition">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                     </button>
-                                    <button onclick="openDeleteModal('/admin/delete-user/{{ $deleteId }}', 'User: {{ $user->email }}')" class="text-gray-400 hover:text-red-600 mx-2 transition">
+                                    <button onclick="openDeleteModal('/admin/delete-user/{{ $deleteId }}', 'User: {{ $email }}')" class="text-gray-400 hover:text-red-600 mx-2 transition">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                     </button>
                                 </td>
@@ -219,7 +194,12 @@
             @endif
 
             @if($view_type == 'homes')
-                <div class="mb-6"><h2 class="text-2xl font-bold text-black">Homes Management</h2></div>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-black">Homes Management</h2>
+                    <button onclick="openCreateHomeModal()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 transition-all">
+                        <span>+</span> Create Home
+                    </button>
+                </div>
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <table class="w-full text-left">
                         <thead class="bg-gray-50 border-b border-gray-100 text-gray-400 uppercase text-xs font-semibold">
@@ -237,9 +217,10 @@
                                 <td class="px-6 py-4 text-center text-gray-400 text-sm">{{ $index + 1 }}</td>
                                 <td class="px-6 py-4 font-bold text-gray-800">{{ $home['name'] }}</td>
                                 <td class="px-6 py-4 text-gray-600">{{ $home['owner_name'] ?? 'Unknown' }}</td>
-                                <td class="px-6 py-4 text-right">
+                                <td class="px-6 py-4 text-right flex justify-end gap-3">
                                     @if(!empty($homeId))
-                                    <button onclick="openDeleteModal('/admin/delete-home/{{ $homeId }}', 'Home: {{ $home['name'] }}')" class="text-red-500 hover:text-red-700 text-sm font-medium">Delete</button>
+                                        <button onclick="openEditHomeModal('{{ $homeId }}', '{{ $home['name'] }}')" class="text-amber-500 hover:text-amber-700 text-sm font-medium">Edit</button>
+                                        <button onclick="openDeleteModal('/admin/delete-home/{{ $homeId }}', 'Home: {{ $home['name'] }}')" class="text-red-500 hover:text-red-700 text-sm font-medium">Delete</button>
                                     @endif
                                 </td>
                             </tr>
@@ -304,21 +285,6 @@
         </div>
     </div>
 
-    <div id="deleteModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-sm">
-            <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-            </div>
-            <h3 class="text-xl font-bold text-gray-900 mb-2">Delete Item</h3>
-            <p class="text-sm text-gray-500 mb-6">Are you sure you want to delete <span id="deleteItemName" class="font-bold text-gray-800">this item</span>? This action cannot be undone.</p>
-            <form id="deleteForm" action="" method="POST" class="flex justify-end gap-3">
-                @csrf
-                <button type="button" onclick="closeModal('deleteModal')" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium">Cancel</button>
-                <button class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-200">Yes, Delete</button>
-            </form>
-        </div>
-    </div>
-
     <div id="editUserModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md">
             <h3 class="font-bold text-2xl mb-6">Edit User</h3>
@@ -335,6 +301,81 @@
         </div>
     </div>
 
+    <div id="createHomeModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md">
+            <h3 class="font-bold text-2xl mb-6 text-gray-900">Add New Home</h3>
+            <form action="/admin/create-home" method="POST" class="space-y-4">
+                @csrf
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Home Name</label>
+                    <input type="text" name="name" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl" placeholder="e.g. My Apartment" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Assign Owner</label>
+                    <div class="relative">
+                        <select name="owner_id" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl appearance-none" required>
+                            <option value="" disabled selected>Select a User...</option>
+                            @if(isset($users) && count($users) > 0)
+                                @foreach($users as $user)
+                                    @php 
+                                        $u = (object)$user; 
+                                        $uid = $u->id ?? $u->_id ?? $u->user_id ?? '';
+                                        $uname = $u->name ?? 'Unknown';
+                                        $uemail = $u->email ?? '';
+                                    @endphp
+                                    @if($uid)
+                                        <option value="{{ $uid }}">{{ $uname }} ({{ $uemail }})</option>
+                                    @endif
+                                @endforeach
+                            @else
+                                <option value="" disabled>No users found</option>
+                            @endif
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-8">
+                    <button type="button" onclick="closeModal('createHomeModal')" class="px-5 py-2 text-gray-500">Cancel</button>
+                    <button class="px-5 py-2 bg-indigo-600 text-white rounded-xl font-bold">Create Home</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="editHomeModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md">
+            <h3 class="font-bold text-2xl mb-6 text-gray-900">Edit Home</h3>
+            <form id="editHomeForm" method="POST" class="space-y-4">
+                @csrf
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Home Name</label>
+                    <input type="text" name="name" id="editHomeName" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl" required>
+                </div>
+                <div class="flex justify-end gap-3 mt-8">
+                    <button type="button" onclick="closeModal('editHomeModal')" class="px-5 py-2 text-gray-500">Cancel</button>
+                    <button class="px-5 py-2 bg-amber-500 text-white rounded-xl font-bold">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-sm">
+            <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">Delete Item</h3>
+            <p class="text-sm text-gray-500 mb-6">Are you sure you want to delete <span id="deleteItemName" class="font-bold text-gray-800">this item</span>? This action cannot be undone.</p>
+            <form id="deleteForm" action="" method="POST" class="flex justify-end gap-3">
+                @csrf
+                <button type="button" onclick="closeModal('deleteModal')" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium">Cancel</button>
+                <button class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-200">Yes, Delete</button>
+            </form>
+        </div>
+    </div>
+
     <script>
         function closeModal(id) { 
             document.getElementById(id).classList.add('hidden'); 
@@ -344,17 +385,28 @@
             document.getElementById(id).classList.remove('hidden'); 
             document.getElementById(id).classList.add('flex'); 
         }
+
+        // Modal Openers
         function openCreateUserModal() { openModal('createUserModal'); }
-        function openDeleteModal(actionUrl, itemName) { 
-            openModal('deleteModal'); 
-            document.getElementById('deleteForm').action = actionUrl; 
-            document.getElementById('deleteItemName').innerText = itemName; 
-        }
+        function openCreateHomeModal() { openModal('createHomeModal'); }
+        
         function openEditUserModal(id, name, email) {
             openModal('editUserModal');
             document.getElementById('editUserName').value = name;
             document.getElementById('editUserEmail').value = email;
             document.getElementById('editUserForm').action = `/admin/update-user/${id}`;
+        }
+
+        function openEditHomeModal(id, name) {
+            openModal('editHomeModal');
+            document.getElementById('editHomeName').value = name;
+            document.getElementById('editHomeForm').action = '/admin/update-home/' + id;
+        }
+
+        function openDeleteModal(actionUrl, itemName) { 
+            openModal('deleteModal'); 
+            document.getElementById('deleteForm').action = actionUrl; 
+            document.getElementById('deleteItemName').innerText = itemName; 
         }
     </script>
 </body>

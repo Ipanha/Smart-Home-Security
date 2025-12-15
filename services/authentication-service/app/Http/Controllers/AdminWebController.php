@@ -27,7 +27,8 @@ class AdminWebController extends Controller
                 return back()->withErrors(['msg' => 'Admins Only.']);
             }
             session(['admin_token' => $content['access_token']]);
-            return redirect('/admin/users');
+            // CHANGED: Redirect to dashboard instead of users
+            return redirect('/admin/dashboard');
         }
         return back()->withErrors(['msg' => 'Invalid Credentials']);
     }
@@ -37,8 +38,39 @@ class AdminWebController extends Controller
         return redirect('/admin/login'); 
     }
 
+    // --- FIX: ACTUAL DASHBOARD IMPLEMENTATION ---
     public function dashboard() { 
-        return redirect('/admin/users'); 
+        $token = session('admin_token');
+        if (!$token) return redirect('/admin/login');
+
+        // 1. Fetch Users (for count)
+        $users = AuthCredential::all(); 
+
+        // 2. Fetch Homes (for count)
+        $homes = [];
+        try {
+            $response = Http::get('http://user-home-service:8000/api/homes');
+            if ($response->successful()) {
+                $homes = $response->json()['data'] ?? [];
+            }
+        } catch (\Exception $e) {}
+
+        // 3. Fetch Devices (for count)
+        $devices = [];
+        try {
+            $response = Http::get('http://device-service:8000/api/all-devices');
+            if ($response->successful()) {
+                $devices = $response->json()['data'] ?? [];
+            }
+        } catch (\Exception $e) {}
+
+        // Return view with 'dashboard' type
+        return view('admin.dashboard', [
+            'view_type' => 'dashboard',
+            'users' => $users,
+            'homes' => $homes,
+            'devices' => $devices
+        ]); 
     }
 
     // --- MAIN VIEWS ---
@@ -74,51 +106,36 @@ class AdminWebController extends Controller
         return view('admin.dashboard', ['users' => $users, 'view_type' => 'users']);
     }
 
-    public function homes() { 
-        $token = session('admin_token');
-        if (!$token) return redirect('/admin/login');
-        
-        $homes = [];
-        $usersMap = [];
+    public function homes()
+{
+    $token = session('admin_token');
+    if (!$token) return redirect('/admin/login');
 
-        try {
-            // Fetch Users for lookup
-            $userResponse = Http::get('http://user-home-service:8000/api/all-users');
-            if ($userResponse->successful()) {
-                $uJson = $userResponse->json();
-                $uList = $uJson['data']['data'] ?? $uJson['data'] ?? [];
-                foreach ($uList as $u) {
-                    $uid = $u['id'] ?? $u['_id'] ?? null;
-                    if ($uid) {
-                        $usersMap[$uid] = [
-                            'name' => $u['name'] ?? 'Unknown',
-                            'email' => $u['email'] ?? 'No Email'
-                        ];
-                    }
-                }
-            }
+    $homes = [];
+    $users = []; // ← ADD THIS
 
-            // Fetch Homes
-            $response = Http::get('http://user-home-service:8000/api/homes');
-            if ($response->successful()) {
-                $rawHomes = $response->json()['data'] ?? [];
-                
-                $homes = array_map(function($home) use ($usersMap) {
-                    $ownerId = $home['owner_id'] ?? null;
-                    if ($ownerId && isset($usersMap[$ownerId])) {
-                        $home['owner_name'] = $usersMap[$ownerId]['name'];
-                        $home['owner_email'] = $usersMap[$ownerId]['email'];
-                    } else {
-                        $home['owner_name'] = 'Unknown Owner';
-                        $home['owner_email'] = $ownerId; 
-                    }
-                    return $home;
-                }, $rawHomes);
-            }
-        } catch (\Exception $e) {}
-        
-        return view('admin.dashboard', ['homes' => $homes, 'view_type' => 'homes']); 
-    }
+    try {
+        // Fetch users (for dropdown)
+        $userResponse = Http::get('http://user-home-service:8000/api/all-users');
+        if ($userResponse->successful()) {
+            $json = $userResponse->json();
+            $users = $json['data']['data'] ?? $json['data'] ?? [];
+        }
+
+        // Fetch homes
+        $response = Http::get('http://user-home-service:8000/api/homes');
+        if ($response->successful()) {
+            $homes = $response->json()['data'] ?? [];
+        }
+    } catch (\Exception $e) {}
+
+    return view('admin.dashboard', [
+        'view_type' => 'homes',
+        'homes' => $homes,
+        'users' => $users // ✅ REQUIRED
+    ]);
+}
+
 
     public function devices() { 
         $token = session('admin_token');
@@ -197,16 +214,38 @@ class AdminWebController extends Controller
         return back()->with('error', 'User not found in Authentication Database.');
     }
 
-    // --- HOME ACTIONS ---
+    // --- HOME ACTIONS ----
+    
     public function createHome(Request $request) {
         $token = session('admin_token');
+        
+        // 1. Send data to User-Home Service
         $response = Http::withToken($token)->post('http://user-home-service:8000/api/homes', [
             'name' => $request->name,
-            'owner_id' => $request->owner_id
+            'owner_id' => $request->owner_id // This comes from the hidden input in home.blade.php
         ]);
 
-        if ($response->successful()) return back()->with('success', 'Home Created!');
-        return back()->with('error', 'Failed to create home.');
+        if ($response->successful()) {
+            return back()->with('success', 'Home Created Successfully!');
+        }
+        
+        return back()->with('error', 'Failed to create home. API Error.');
+    }
+
+    // NEW: Update Home Function
+    public function updateHome(Request $request, $id) {
+        $token = session('admin_token');
+
+        // 1. Send PUT request to User-Home Service
+        $response = Http::withToken($token)->put("http://user-home-service:8000/api/homes/{$id}", [
+            'name' => $request->name,
+        ]);
+
+        if ($response->successful()) {
+            return back()->with('success', 'Home Updated Successfully!');
+        }
+
+        return back()->with('error', 'Failed to update home.');
     }
 
     public function deleteHome($id) {

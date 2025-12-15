@@ -211,23 +211,33 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
-                            @forelse($homes as $index => $home)
-                            @php $homeId = $home['id'] ?? $home['_id'] ?? ''; @endphp
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-center text-gray-400 text-sm">{{ $index + 1 }}</td>
-                                <td class="px-6 py-4 font-bold text-gray-800">{{ $home['name'] }}</td>
-                                <td class="px-6 py-4 text-gray-600">{{ $home['owner_name'] ?? 'Unknown' }}</td>
-                                <td class="px-6 py-4 text-right flex justify-end gap-3">
-                                    @if(!empty($homeId))
-                                        <button onclick="openEditHomeModal('{{ $homeId }}', '{{ $home['name'] }}')" class="text-amber-500 hover:text-amber-700 text-sm font-medium">Edit</button>
-                                        <button onclick="openDeleteModal('/admin/delete-home/{{ $homeId }}', 'Home: {{ $home['name'] }}')" class="text-red-500 hover:text-red-700 text-sm font-medium">Delete</button>
-                                    @endif
-                                </td>
-                            </tr>
-                            @empty 
-                            <tr><td colspan="4" class="p-8 text-center text-gray-400">No homes found in system.</td></tr>
-                            @endforelse
-                        </tbody>
+                        @forelse($homes as $index => $home)
+                        @php 
+                            // 1. SAFE ID EXTRACTION FOR MONGODB
+                            $rawId = $home['id'] ?? $home['_id'] ?? '';
+                            $homeId = is_array($rawId) ? ($rawId['$oid'] ?? '') : $rawId;
+
+                            // 2. SAFE NAME (Escaping quotes so JS doesn't break on names like "Panha's Home")
+                            $homeName = $home['name'] ?? 'Unnamed';
+                            $jsName = addslashes($homeName);
+                        @endphp
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 text-center text-gray-400 text-sm">{{ $index + 1 }}</td>
+                            <td class="px-6 py-4 font-bold text-gray-800">{{ $homeName }}</td>
+                            <td class="px-6 py-4 text-gray-600">{{ $home['owner_name'] ?? 'Unknown' }}</td>
+                            <td class="px-6 py-4 text-right flex justify-end gap-3">
+                                @if(!empty($homeId))
+                                    {{-- FIX: Use the sanitized $jsName and $homeId --}}
+                                    <button onclick="openEditHomeModal('{{ $homeId }}', '{{ $jsName }}')" class="text-amber-500 hover:text-amber-700 text-sm font-medium">Edit</button>
+                                    
+                                    <button onclick="openDeleteModal('/admin/delete-home/{{ $homeId }}', 'Home: {{ $jsName }}')" class="text-red-500 hover:text-red-700 text-sm font-medium">Delete</button>
+                                @endif
+                            </td>
+                        </tr>
+                        @empty 
+                        <tr><td colspan="4" class="p-8 text-center text-gray-400">No homes found in system.</td></tr>
+                        @endforelse
+                    </tbody>
                     </table>
                 </div>
             @endif
@@ -348,8 +358,9 @@
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md">
             <h3 class="font-bold text-2xl mb-6 text-gray-900">Edit Home</h3>
             <form id="editHomeForm" method="POST" class="space-y-4">
-                @csrf
-                <div>
+            @csrf
+            @method('PUT')
+                        <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Home Name</label>
                     <input type="text" name="name" id="editHomeName" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl" required>
                 </div>
@@ -370,6 +381,7 @@
             <p class="text-sm text-gray-500 mb-6">Are you sure you want to delete <span id="deleteItemName" class="font-bold text-gray-800">this item</span>? This action cannot be undone.</p>
             <form id="deleteForm" action="" method="POST" class="flex justify-end gap-3">
                 @csrf
+                @method('DELETE')
                 <button type="button" onclick="closeModal('deleteModal')" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium">Cancel</button>
                 <button class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-200">Yes, Delete</button>
             </form>
@@ -377,37 +389,46 @@
     </div>
 
     <script>
-        function closeModal(id) { 
-            document.getElementById(id).classList.add('hidden'); 
-            document.getElementById(id).classList.remove('flex'); 
+    function closeModal(id) { 
+        const modal = document.getElementById(id);
+        if(modal) {
+            modal.classList.add('hidden'); 
+            modal.classList.remove('flex'); 
         }
-        function openModal(id) { 
-            document.getElementById(id).classList.remove('hidden'); 
-            document.getElementById(id).classList.add('flex'); 
+    }
+    
+    function openModal(id) { 
+        const modal = document.getElementById(id);
+        if(modal) {
+            modal.classList.remove('hidden'); 
+            modal.classList.add('flex'); 
         }
+    }
 
-        // Modal Openers
-        function openCreateUserModal() { openModal('createUserModal'); }
-        function openCreateHomeModal() { openModal('createHomeModal'); }
-        
-        function openEditUserModal(id, name, email) {
-            openModal('editUserModal');
-            document.getElementById('editUserName').value = name;
-            document.getElementById('editUserEmail').value = email;
-            document.getElementById('editUserForm').action = `/admin/update-user/${id}`;
-        }
+    // Modal Openers
+    function openCreateUserModal() { openModal('createUserModal'); }
+    function openCreateHomeModal() { openModal('createHomeModal'); }
+    
+    function openEditUserModal(id, name, email) {
+        openModal('editUserModal');
+        document.getElementById('editUserName').value = name;
+        document.getElementById('editUserEmail').value = email;
+        // FIX: Added quotes and concatenation. 
+        // original was: action = /admin/update-user/${id}; (Syntax Error)
+        document.getElementById('editUserForm').action = '/admin/update-user/' + id; 
+    }
 
-        function openEditHomeModal(id, name) {
-            openModal('editHomeModal');
-            document.getElementById('editHomeName').value = name;
-            document.getElementById('editHomeForm').action = '/admin/update-home/' + id;
-        }
+    function openEditHomeModal(id, name) {
+        openModal('editHomeModal');
+        document.getElementById('editHomeName').value = name;
+        document.getElementById('editHomeForm').action = '/admin/update-home/' + id;
+    }
 
-        function openDeleteModal(actionUrl, itemName) { 
-            openModal('deleteModal'); 
-            document.getElementById('deleteForm').action = actionUrl; 
-            document.getElementById('deleteItemName').innerText = itemName; 
-        }
-    </script>
+    function openDeleteModal(actionUrl, itemName) { 
+        openModal('deleteModal'); 
+        document.getElementById('deleteForm').action = actionUrl; 
+        document.getElementById('deleteItemName').innerText = itemName; 
+    }
+</script>
 </body>
 </html>

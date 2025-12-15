@@ -11,7 +11,6 @@
 <body class="bg-gray-100 font-sans text-gray-800 min-h-screen p-8">
 
     <div class="max-w-6xl mx-auto">
-        
         <div class="flex justify-between items-center mb-8">
             <div>
                 <a href="/admin/users" class="text-indigo-600 hover:text-indigo-800 font-medium text-sm flex items-center gap-1 mb-2">
@@ -42,42 +41,38 @@
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <table class="w-full text-left">
                 <thead class="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase text-xs">
-                    <tr>
-                        <th class="px-6 py-4">Home Name</th>
-                        <th class="px-6 py-4">Home ID</th>
-                        <th class="px-6 py-4 text-right">Actions</th>
-                    </tr>
+                    <tr><th class="px-6 py-4">Home Name</th><th class="px-6 py-4">Home ID</th><th class="px-6 py-4 text-right">Actions</th></tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse($homes as $home)
-                    @php $homeId = $home['id'] ?? $home['_id'] ?? ''; @endphp
+                    @php 
+                        // SAFE ID EXTRACTION
+                        $h = (array)$home;
+                        $rawId = $h['id'] ?? $h['_id'] ?? '';
+                        $homeId = is_array($rawId) ? ($rawId['$oid'] ?? '') : $rawId;
+                        $homeName = $h['name'] ?? 'Unnamed';
+                    @endphp
                     <tr class="hover:bg-gray-50 transition-colors">
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
                                 <div class="bg-indigo-100 p-2 rounded-lg text-indigo-600">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                                 </div>
-                                <span class="font-bold text-gray-800">{{ $home['name'] }}</span>
+                                <span class="font-bold text-gray-800">{{ $homeName }}</span>
                             </div>
                         </td>
                         <td class="px-6 py-4 font-mono text-xs text-gray-500">{{ $homeId }}</td>
                         <td class="px-6 py-4 text-right flex justify-end gap-3">
-                            
-                            <button onclick="openEditModal('{{ $homeId }}', '{{ $home['name'] }}')" class="text-sm font-medium text-amber-600 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-md transition-colors border border-amber-200 flex items-center gap-1">
+                            <button onclick="openEditModal('{{ $homeId }}', '{{ $homeName }}')" class="text-sm font-medium text-amber-600 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-md transition-colors border border-amber-200 flex items-center gap-1">
                                 <span>✏️</span> Edit
                             </button>
-
-                            <button onclick="openDeleteModal('/admin/delete-home/{{ $homeId }}', '{{ $home['name'] }}')" class="text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors border border-red-200 flex items-center gap-1">
+                            <button onclick="openDeleteModal('/admin/delete-home/{{ $homeId }}', '{{ $homeName }}')" class="text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors border border-red-200 flex items-center gap-1">
                                 <span>🗑️</span> Delete
                             </button>
                         </td>
                     </tr>
                     @empty
-                    <tr>
-                        <td colspan="3" class="p-8 text-center text-gray-500 bg-gray-50">
-                            No homes assigned to this user yet.
-                        </td>
-                    </tr>
+                    <tr><td colspan="3" class="p-8 text-center text-gray-500 bg-gray-50">No homes assigned to this user yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -90,7 +85,6 @@
             <form action="/admin/create-home" method="POST">
                 @csrf
                 <input type="hidden" name="owner_id" value="{{ $userId }}">
-                
                 <div class="mb-4">
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Home Name</label>
                     <input type="text" name="name" class="w-full border p-2 rounded focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. Vacation House" required>
@@ -143,23 +137,22 @@
             document.getElementById('createModal').classList.add('flex'); 
         }
 
-        function openEditModal(id, name) {
-            document.getElementById('editModal').classList.remove('hidden');
-            document.getElementById('editModal').classList.add('flex');
-            
-            // Populate Data
-            document.getElementById('editHomeName').value = name;
-            
-            // Set Dynamic Form Action
-            document.getElementById('editForm').action = '/admin/update-home/' + id;
-        }
+        <script>
+function openEditHomeModal(id, name) {
+    document.getElementById('editHomeName').value = name;
+    document.getElementById('editHomeForm').action = '/admin/update-home/' + id;
+    document.getElementById('editHomeModal').classList.remove('hidden');
+    document.getElementById('editHomeModal').classList.add('flex');
+}
 
-        function openDeleteModal(actionUrl, itemName) { 
-            document.getElementById('deleteModal').classList.remove('hidden'); 
-            document.getElementById('deleteModal').classList.add('flex');
-            document.getElementById('deleteForm').action = actionUrl; 
-            document.getElementById('deleteItemName').innerText = itemName; 
-        }
+function openDeleteModal(url, name) {
+    document.getElementById('deleteForm').action = url;
+    document.getElementById('deleteItemName').innerText = name;
+    document.getElementById('deleteModal').classList.remove('hidden');
+    document.getElementById('deleteModal').classList.add('flex');
+}
+</script>
+
     </script>
 </body>
 </html>

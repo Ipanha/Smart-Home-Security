@@ -2,104 +2,126 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Smart Home Admin Login</title>
+    <title>Smart Home - Login</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Poppins', sans-serif; }
+    </style>
 </head>
 
-<body class="relative min-h-screen overflow-hidden bg-black flex items-center justify-center">
+<body class="bg-gray-50 min-h-screen flex flex-col">
 
-    <!-- Animated background blobs -->
-    <div class="absolute -top-32 -left-32 w-96 h-96 bg-blue-600/30 rounded-full blur-3xl animate-pulse"></div>
-    <div class="absolute top-1/3 -right-32 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse"></div>
-    <div class="absolute bottom-0 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
+    <nav class="w-full bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex items-center">
+        <div class="flex items-center gap-3">
+             <svg width="40" height="40" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M40 90 L100 30 L160 90" stroke="#DC2626" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M140 50 V30 H160 V70" fill="#DC2626"/>
+                <path d="M60 90 V150 C60 160 140 160 140 150 V90" stroke="#1E3A8A" stroke-width="12" fill="none"/>
+                <path d="M75 90 L100 65 L125 90" stroke="#1E3A8A" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+                <rect x="92" y="110" width="16" height="16" fill="#1E3A8A"/>
+                <path d="M30 170 C60 150 140 150 170 170" stroke="#1E3A8A" stroke-width="5" stroke-linecap="round"/>
+           </svg>
+           <h1 class="text-2xl font-bold text-black tracking-tight">Smart Home</h1>
+        </div>
+    </nav>
 
-    <!-- Login Card -->
-    <div class="relative z-10 w-full max-w-md">
+    <div class="flex-grow flex items-center justify-center p-4">
 
-        <div class="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-[0_0_80px_rgba(59,130,246,0.35)] p-8">
+        <div class="bg-white rounded-[30px] shadow-2xl w-full max-w-5xl overflow-hidden min-h-[600px] flex flex-col md:flex-row border border-gray-100">
 
-            <!-- Logo -->
-            <div class="flex justify-center mb-6">
-                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M3 12l9-9 9 9M4 10v10a1 1 0 001 1h5m4 0h5a1 1 0 001-1V10" />
-                    </svg>
+            <div class="w-full md:w-1/2 p-8 md:p-12 lg:p-16 flex flex-col justify-center relative border-r border-gray-100">
+                
+                <h2 class="text-4xl font-bold text-gray-900 text-center mb-10">Login</h2>
+
+                @if($errors->any())
+                    <div class="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r" role="alert">
+                        <p class="font-bold">Error</p>
+                        <p>{{ $errors->first() }}</p>
+                    </div>
+                @endif
+
+                <form action="/admin/login" method="POST" class="space-y-8">
+                    @csrf
+
+                    <div class="relative group">
+                        <label class="block text-gray-600 text-sm mb-1">Username</label>
+                        <div class="relative">
+                            <input 
+                                type="email" 
+                                name="email" 
+                                value="admin@smarthome.com" 
+                                required
+                                class="w-full py-2 border-b-2 border-gray-300 text-gray-900 focus:outline-none focus:border-black transition-colors bg-transparent pr-10"
+                            >
+                            <div class="absolute right-0 top-1 text-black">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                                    <path fill-rule="evenodd" d="M18.685 19.097A9.723 9.723 0 0021.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 003.065 7.097A9.716 9.716 0 0012 21.75a9.716 9.716 0 006.685-2.653zm-12.54-1.285A7.486 7.486 0 0112 15a7.486 7.486 0 015.855 2.812A8.224 8.224 0 0112 20.25a8.224 8.224 0 01-5.855-2.438zM15.75 9a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="relative group">
+                        <label class="block text-gray-600 text-sm mb-1">Password</label>
+                        <div class="relative">
+                            <input 
+                                type="password" 
+                                name="password" 
+                                value="admin123"
+                                required
+                                class="w-full py-2 border-b-2 border-gray-300 text-gray-900 focus:outline-none focus:border-black transition-colors bg-transparent pr-10"
+                            >
+                            <div class="absolute right-0 top-1 text-black">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                                    <path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between mt-4">
+                        <div class="flex items-center">
+                            <input id="remember-me" name="remember-me" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded border-2">
+                            <label for="remember-me" class="ml-2 block text-sm text-gray-900">
+                                Remember me
+                            </label>
+                        </div>
+
+                        <div class="text-sm">
+                            <a href="#" class="font-medium text-blue-600 hover:text-blue-500">
+                                Forgot your password?
+                            </a>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-gradient-to-r from-[#5356FF] to-[#8c52ff] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition hover:scale-[1.01]">
+                        Login
+                    </button>
+                </form>
+            </div>
+
+            <div class="hidden md:flex md:w-1/2 bg-white flex-col items-center justify-center p-8 relative">
+                
+                <div class="mb-8 transform hover:scale-105 transition duration-500">
+                   <svg width="250" height="250" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M40 90 L100 30 L160 90" stroke="#DC2626" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M140 50 V30 H160 V70" fill="#DC2626"/>
+                        <path d="M60 90 V150 C60 160 140 160 140 150 V90" stroke="#1E3A8A" stroke-width="10" fill="none"/>
+                        <path d="M75 90 L100 65 L125 90" stroke="#1E3A8A" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+                        <rect x="92" y="110" width="16" height="16" fill="#1E3A8A"/>
+                        <path d="M30 170 C60 150 140 150 170 170" stroke="#1E3A8A" stroke-width="4" stroke-linecap="round"/>
+                   </svg>
+                </div>
+
+                <div class="text-center">
+                    <h2 class="text-3xl font-bold text-[#4338ca] mb-2">Welcome to</h2>
+                    <h2 class="text-3xl font-bold text-[#4338ca]">Smart Home Security</h2>
                 </div>
             </div>
 
-            <!-- Title -->
-            <h2 class="text-center text-3xl font-bold text-white tracking-wide">
-                Smart Home
-            </h2>
-            <p class="text-center text-sm text-gray-300 mt-1 mb-8">
-                Admin Control Panel
-            </p>
-
-            <!-- Error -->
-            @if($errors->any())
-                <div class="mb-4 rounded-xl bg-red-500/20 border border-red-500/40 text-red-200 px-4 py-2 text-sm">
-                    {{ $errors->first() }}
-                </div>
-            @endif
-
-            <!-- Form -->
-            <form action="/admin/login" method="POST" class="space-y-6">
-                @csrf
-
-                <!-- Email -->
-                <div>
-                    <label class="text-xs uppercase tracking-widest text-gray-300">
-                        Email
-                    </label>
-                    <input
-                        type="email"
-                        name="email"
-                        value="admin@smarthome.com"
-                        required
-                        class="mt-2 w-full rounded-xl bg-black/40 border border-white/20 px-4 py-3 text-white
-                               placeholder-gray-400 focus:outline-none focus:border-cyan-400
-                               focus:ring-2 focus:ring-cyan-400/40 transition"
-                        placeholder="admin@smarthome.com"
-                    >
-                </div>
-
-                <!-- Password -->
-                <div>
-                    <label class="text-xs uppercase tracking-widest text-gray-300">
-                        Password
-                    </label>
-                    <input
-                        type="password"
-                        name="password"
-                        value="admin123"
-                        required
-                        class="mt-2 w-full rounded-xl bg-black/40 border border-white/20 px-4 py-3 text-white
-                               placeholder-gray-400 focus:outline-none focus:border-blue-500
-                               focus:ring-2 focus:ring-blue-500/40 transition"
-                        placeholder="••••••••"
-                    >
-                </div>
-
-                <!-- Button -->
-                <button
-                    type="submit"
-                    class="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 py-3 font-semibold text-white
-                           shadow-lg transition-all duration-300 hover:shadow-cyan-500/40 hover:scale-[1.02]"
-                >
-                    <span class="relative z-10">Access Dashboard</span>
-                    <span class="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition"></span>
-                </button>
-            </form>
-
-            <!-- Footer -->
-            <p class="mt-6 text-center text-xs text-gray-400">
-                Secure Smart Home System © 2025
-            </p>
-
         </div>
     </div>
-
 </body>
 </html>

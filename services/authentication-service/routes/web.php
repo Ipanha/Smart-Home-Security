@@ -22,6 +22,7 @@ Route::middleware(['web'])->group(function () {
     // --- CRUD ACTIONS ---
     // Users
     Route::post('/admin/create-user', [AdminWebController::class, 'createUser']);
+    Route::post('/admin/update-user/{id}', [AdminWebController::class, 'updateUser']);
     Route::post('/admin/delete-user/{id}', [AdminWebController::class, 'deleteUser']);
 
     // Homes

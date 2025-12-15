@@ -72,6 +72,16 @@
                                 <td class="px-6 py-4 text-right">
                                     @if(($user->role ?? '') !== 'admin' && !empty($deleteId))
                                         <button onclick="openHomeModal('{{ $deleteId }}', '{{ $user->email }}')" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium mr-3">Create Home</button>
+                                                                            <button
+                                            onclick="openEditUserModal(
+                                                '{{ $deleteId }}',
+                                                '{{ $user->name }}',
+                                                '{{ $user->email }}'
+                                            )"
+                                            class="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                        >
+                                            ✏️ Edit
+                                        </button>
                                         <button onclick="openDeleteModal('/admin/delete-user/{{ $deleteId }}', 'User: {{ $user->email }}')" class="text-red-600 hover:text-red-800 text-sm font-medium">🗑️ Delete</button>
                                     @endif
                                 </td>
@@ -186,6 +196,46 @@
         </div>
     </div>
 
+    <!-- Edit User Modal -->
+<div id="editUserModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-xl shadow-2xl w-96">
+        <h3 class="font-bold text-lg mb-4">Edit User</h3>
+
+        <form id="editUserForm" method="POST">
+            @csrf
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold uppercase">Full Name</label>
+                    <input type="text" name="name" id="editUserName" class="w-full border p-2 rounded" required>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase">Email</label>
+                    <input type="email" name="email" id="editUserEmail" class="w-full border p-2 rounded" required>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase">
+                        New Password <span class="text-gray-400">(optional)</span>
+                    </label>
+                    <input type="password" name="password" class="w-full border p-2 rounded">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-6">
+                <button type="button" onclick="closeModal('editUserModal')" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">
+                    Cancel
+                </button>
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
     <!-- Delete Modal -->
     <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm border-t-4 border-red-500">
@@ -205,6 +255,16 @@
         function openCreateUserModal() { openModal('createUserModal'); }
         function openHomeModal(id, email) { openModal('homeModal'); document.getElementById('modalOwnerId').value = id; document.getElementById('modalOwnerEmail').innerText = email; }
         function openDeleteModal(actionUrl, itemName) { openModal('deleteModal'); document.getElementById('deleteForm').action = actionUrl; document.getElementById('deleteItemName').innerText = itemName; }
+        function openEditUserModal(id, name, email) {
+        openModal('editUserModal');
+
+        document.getElementById('editUserName').value = name;
+        document.getElementById('editUserEmail').value = email;
+
+        document.getElementById('editUserForm').action =
+            `/admin/update-user/${id}`;
+    }
+
     </script>
 </body>
 </html>

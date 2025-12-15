@@ -182,33 +182,38 @@ class AdminWebController extends Controller
     }
 
     // FIX: DIRECT LOGIC UPDATE
-    public function updateUser(Request $request, $id) {
-        // 1. Find Auth Record
-        $credential = AuthCredential::where('user_id', $id)->first();
-        
-        if (!$credential) {
-            return back()->with('error', 'User not found.');
-        }
+   public function updateUser(Request $request, $id)
+{
+    // 1. Find auth record
+    $credential = AuthCredential::where('user_id', $id)->first();
 
-        // 2. Update Local Auth Data
-        $credential->email = $request->email;
-        if ($request->filled('password')) {
-            $credential->password = Hash::make($request->password);
-        }
-        $credential->save();
-
-        // 3. Update Remote Profile Data
-        try {
-            Http::put("http://user-home-service:8000/api/users/{$id}", [
-                'name' => $request->name,
-                'email' => $request->email
-            ]);
-        } catch (\Exception $e) {
-            return back()->with('warning', 'Auth updated, but Profile sync failed.');
-        }
-
-        return back()->with('success', 'User Updated Successfully');
+    if (!$credential) {
+        return back()->with('error', 'User not found.');
     }
+
+    // 2. Update AUTH DB (email + password)
+    $credential->email = $request->email;
+
+    if ($request->filled('password')) {
+        $credential->password = Hash::make($request->password);
+    }
+
+    $credential->save();
+
+    // 3. Update USER PROFILE SERVICE (Mongo)
+    try {
+        Http::post("http://user-home-service:8000/api/users/update", [
+            'id'    => $id,
+            'name'  => $request->name,
+            'email' => $request->email
+        ]);
+    } catch (\Exception $e) {
+        return back()->with('warning', 'Auth updated but profile update failed.');
+    }
+
+    return back()->with('success', 'User Updated Successfully');
+}
+
 
     public function createHome(Request $request) {
         $token = session('admin_token');

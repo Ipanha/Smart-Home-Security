@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Models\AuthCredential;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Hash; // Needed for update
+use Illuminate\Support\Facades\Hash;
 
 class AdminWebController extends Controller
 {
@@ -17,10 +17,8 @@ class AdminWebController extends Controller
     }
 
     public function login(Request $request) {
-        // We keep Route::dispatch for login because it generates the JWT token for us
         $server = ['HTTP_ACCEPT' => 'application/json'];
         $proxy = Request::create('/api/login', 'POST', $request->only(['email', 'password']), [], [], $server);
-        
         $response = Route::dispatch($proxy);
         $content = json_decode($response->getContent(), true);
 
@@ -137,18 +135,15 @@ class AdminWebController extends Controller
         return view('admin.dashboard', ['devices' => $devices, 'view_type' => 'devices']); 
     }
 
-    // --- ACTIONS ---
+    // --- USER ACTIONS ---
 
+    // CREATE USER
     public function createUser(Request $request) {
         $data = $request->only(['name', 'email', 'password', 'password_confirmation']);
-        
-        // We keep using proxy here because Register logic is complex (creates 2 records)
-        // And register route is PUBLIC, so no Auth Headers needed.
         $server = ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'];
         $proxy = Request::create('/api/register', 'POST', [], [], [], $server, json_encode($data));
-        
         $response = Route::dispatch($proxy);
-        
+
         if ($response->status() === 201) return back()->with('success', 'User Created Successfully!');
         
         $content = json_decode($response->getContent(), true);
@@ -156,68 +151,55 @@ class AdminWebController extends Controller
         return back()->with('error', 'Failed: ' . $msg);
     }
 
-    // FIX: DIRECT LOGIC DELETE (Bypasses API Middleware issues)
-    public function deleteUser($id) {
+    // UPDATE USER
+    public function updateUser(Request $request, $id)
+    {
+        $credential = AuthCredential::where('user_id', $id)->first();
+        if (!$credential) return back()->with('error', 'User not found.');
+
+        $credential->email = $request->email;
+        if ($request->filled('password')) $credential->password = Hash::make($request->password);
+        $credential->save();
+
+        try {
+            $response = Http::put("http://user-home-service:8000/api/users/{$id}", [
+                'name' => $request->name,
+                'email' => $request->email
+            ]);
+            if ($response->failed()) {
+                return back()->with('warning', 'Auth updated but profile update failed.');
+            }
+        } catch (\Exception $e) {
+            return back()->with('warning', 'Auth updated but profile update failed.');
+        }
+
+        return back()->with('success', 'User Updated Successfully');
+    }
+
+    // DELETE USER
+    public function deleteUser($id)
+    {
         if (!$id || $id === 'undefined') return back()->with('error', 'Error: User ID is missing.');
 
-        // 1. Delete from Auth DB (Local)
         $deleted = AuthCredential::where('user_id', $id)->delete();
-        if (!$deleted) {
-             $deleted = AuthCredential::where('_id', $id)->delete();
-        }
+        if (!$deleted) $deleted = AuthCredential::where('_id', $id)->delete();
 
-        // 2. Delete from User Profile DB (Remote Service)
-        // We use Http facade to call the service directly
         try {
-            Http::delete("http://user-home-service:8000/api/users/{$id}");
+            $response = Http::delete("http://user-home-service:8000/api/users/{$id}");
+            if ($response->failed()) {
+                return back()->with('warning', 'Deleted from Auth but failed to delete profile.');
+            }
         } catch (\Exception $e) {
-            // Even if remote fails, if local is deleted, we count it as success for admin
+            return back()->with('warning', 'Deleted from Auth but failed to delete profile.');
         }
 
-        if ($deleted) {
-            return back()->with('success', 'User Deleted Successfully');
-        }
-
+        if ($deleted) return back()->with('success', 'User Deleted Successfully');
         return back()->with('error', 'User not found in Authentication Database.');
     }
 
-    // FIX: DIRECT LOGIC UPDATE
-   public function updateUser(Request $request, $id)
-{
-    // 1. Find auth record
-    $credential = AuthCredential::where('user_id', $id)->first();
-
-    if (!$credential) {
-        return back()->with('error', 'User not found.');
-    }
-
-    // 2. Update AUTH DB (email + password)
-    $credential->email = $request->email;
-
-    if ($request->filled('password')) {
-        $credential->password = Hash::make($request->password);
-    }
-
-    $credential->save();
-
-    // 3. Update USER PROFILE SERVICE (Mongo)
-    try {
-        Http::post("http://user-home-service:8000/api/users/update", [
-            'id'    => $id,
-            'name'  => $request->name,
-            'email' => $request->email
-        ]);
-    } catch (\Exception $e) {
-        return back()->with('warning', 'Auth updated but profile update failed.');
-    }
-
-    return back()->with('success', 'User Updated Successfully');
-}
-
-
+    // --- HOME ACTIONS ---
     public function createHome(Request $request) {
         $token = session('admin_token');
-        // Remote call with token
         $response = Http::withToken($token)->post('http://user-home-service:8000/api/homes', [
             'name' => $request->name,
             'owner_id' => $request->owner_id
@@ -233,6 +215,7 @@ class AdminWebController extends Controller
         return back()->with('error', 'Failed to delete home.');
     }
 
+    // --- DEVICE ACTIONS ---
     public function createDevice(Request $request) {
         $response = Http::post('http://device-service:8000/api/create-device', [
             'home_id' => $request->home_id,
@@ -250,13 +233,13 @@ class AdminWebController extends Controller
         if ($response->successful()) return back()->with('success', 'Device Deleted');
         return back()->with('error', 'Failed to delete device.');
     }
-    
+
     public function viewUserHomes($userId) {
         $response = Http::get("http://user-home-service:8000/api/homes?owner_id={$userId}");
         $homes = $response->json()['data'] ?? [];
         return view('admin.homes', compact('homes', 'userId'));
     }
-    
+
     public function viewHomeDevices($homeId) {
         $response = Http::get("http://device-service:8000/api/homes/{$homeId}/devices");
         $devices = $response->json()['data'] ?? [];

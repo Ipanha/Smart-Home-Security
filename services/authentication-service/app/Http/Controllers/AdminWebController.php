@@ -327,6 +327,7 @@ class AdminWebController extends Controller
     // --- UPDATE DEVICE ---
     public function updateDevice(Request $request, $id) {
         $response = Http::put("http://device-service:8000/api/devices/{$id}", [
+            'home_id' => $request->home_id, // Pass the new Home ID
             'name' => $request->name,
             'type' => $request->type,
             'status' => $request->status

@@ -263,53 +263,60 @@
 
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <table class="w-full text-left" id="devicesTable">
-                        <thead class="bg-gray-50 border-b border-gray-100 text-gray-400 uppercase text-xs font-semibold">
-                            <tr>
-                                <th class="px-6 py-4">Device Details</th>
-                                <th class="px-6 py-4">Home Location</th> <th class="px-6 py-4">Status</th>
-                                <th class="px-6 py-4">Created Date</th> <th class="px-6 py-4 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-50">
-                            @forelse($devices as $device)
-                            @php 
-                                $deviceId = $device['id'] ?? $device['_id'] ?? '';
-                                $devName = addslashes($device['name']);
-                                $devType = $device['type'] ?? 'unknown';
-                                $devStatus = $device['status'] ?? 'active';
-                                $homeName = $device['home_name'] ?? 'Unknown';
-                                // Format Date
-                                $created = isset($device['created_at']) ? \Carbon\Carbon::parse($device['created_at'])->format('M d, Y') : 'N/A';
-                            @endphp
-                            <tr class="hover:bg-gray-50 transition-colors device-row">
-                                <td class="px-6 py-4">
-                                    <div class="font-bold text-gray-800 device-name">{{ $device['name'] }}</div>
-                                    <div class="text-xs text-gray-400 uppercase tracking-wider device-type">{{ $devType }}</div>
-                                </td>
-                                <td class="px-6 py-4 text-sm text-gray-600 font-medium device-home">
-                                    {{ $homeName }}
-                                </td>
-                                <td class="px-6 py-4">
-                                    <span class="px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider 
-                                    {{ $devStatus == 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600' }}">
-                                        {{ $devStatus }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 text-sm text-gray-500">
-                                    {{ $created }}
-                                </td>
-                                <td class="px-6 py-4 text-right flex justify-end gap-3">
-                                    @if(!empty($deviceId))
-                                    <button onclick="openEditDeviceModal('{{ $deviceId }}', '{{ $devName }}', '{{ $devType }}', '{{ $devStatus }}')" class="text-amber-500 hover:text-amber-700 text-sm font-medium">Edit</button>
-                                    <button onclick="openDeleteModal('/admin/delete-device/{{ $deviceId }}', 'Device: {{ $devName }}')" class="text-red-500 hover:text-red-700 text-sm font-medium">Delete</button>
-                                    @endif
-                                </td>
-                            </tr>
-                            @empty
-                            <tr><td colspan="5" class="p-8 text-center text-gray-400">No devices online.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+    <thead class="bg-gray-50 border-b border-gray-100 text-gray-400 uppercase text-xs font-semibold">
+        <tr>
+            <th class="px-6 py-4 w-16 text-center">No</th>
+            <th class="px-6 py-4">Device Details</th>
+            <th class="px-6 py-4">Home Location</th>
+            <th class="px-6 py-4">Status</th>
+            <th class="px-6 py-4">Created Date</th>
+            <th class="px-6 py-4 text-right">Actions</th>
+        </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+        @forelse($devices as $index => $device) @php 
+            $deviceId = $device['id'] ?? $device['_id'] ?? '';
+            $devName = addslashes($device['name']);
+            $devType = $device['type'] ?? 'unknown';
+            $devStatus = $device['status'] ?? 'active';
+            $homeId = $device['home_id'] ?? ''; 
+            $homeName = $device['home_name'] ?? 'Unknown';
+            $created = isset($device['created_at']) ? \Carbon\Carbon::parse($device['created_at'])->format('M d, Y') : 'N/A';
+        @endphp
+        <tr class="hover:bg-gray-50 transition-colors device-row">
+            
+            <td class="px-6 py-4 text-center text-gray-400 text-sm font-medium">
+                {{ $loop->iteration }}
+            </td>
+
+            <td class="px-6 py-4">
+                <div class="font-bold text-gray-800 device-name">{{ $device['name'] }}</div>
+                <div class="text-xs text-gray-400 uppercase tracking-wider device-type">{{ $devType }}</div>
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-600 font-medium device-home">
+                {{ $homeName }}
+            </td>
+            <td class="px-6 py-4">
+                <span class="px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider 
+                {{ $devStatus == 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600' }}">
+                    {{ $devStatus }}
+                </span>
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-500">
+                {{ $created }}
+            </td>
+            <td class="px-6 py-4 text-right flex justify-end gap-3">
+                @if(!empty($deviceId))
+                <button onclick="openEditDeviceModal('{{ $deviceId }}', '{{ $devName }}', '{{ $devType }}', '{{ $devStatus }}', '{{ $homeId }}')" class="text-amber-500 hover:text-amber-700 text-sm font-medium">Edit</button>
+                <button onclick="openDeleteModal('/admin/delete-device/{{ $deviceId }}', 'Device: {{ $devName }}')" class="text-red-500 hover:text-red-700 text-sm font-medium">Delete</button>
+                @endif
+            </td>
+        </tr>
+        @empty
+        <tr><td colspan="6" class="p-8 text-center text-gray-400">No devices online.</td></tr>
+        @endforelse
+    </tbody>
+</table>
                 </div>
             @endif
 
@@ -478,6 +485,20 @@
             <form id="editDeviceForm" method="POST" class="space-y-4">
                 @csrf
                 @method('PUT')
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Assign to Home</label>
+                    <select name="home_id" id="editDeviceHome" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl" required>
+                        <option value="" disabled>Select a Home...</option>
+                        @if(isset($homes))
+                            @foreach($homes as $home)
+                                @php $hid = $home['id'] ?? $home['_id'] ?? ($home['id']['$oid'] ?? ''); @endphp
+                                <option value="{{ $hid }}">{{ $home['name'] }}</option>
+                            @endforeach
+                        @endif
+                    </select>
+                </div>
+
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Device Name</label>
                     <input type="text" name="name" id="editDeviceName" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl" required>
@@ -552,11 +573,20 @@
         openModal('createDeviceModal');
     }
 
-    function openEditDeviceModal(id, name, type, status) {
+    function openEditDeviceModal(id, name, type, status, homeId) {
         openModal('editDeviceModal');
+        
+        // Populate fields
         document.getElementById('editDeviceName').value = name;
         document.getElementById('editDeviceType').value = type;
         document.getElementById('editDeviceStatus').value = status;
+        
+        // Select the correct Home
+        if(homeId) {
+            document.getElementById('editDeviceHome').value = homeId;
+        }
+
+        // Set form action
         document.getElementById('editDeviceForm').action = '/admin/update-device/' + id;
     }
 

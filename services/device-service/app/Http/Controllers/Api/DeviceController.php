@@ -50,18 +50,21 @@ class DeviceController extends Controller
     // 3. UPDATE
     public function update(Request $request, $id)
     {
+        $validatedData = $request->validate([
+            'home_id' => 'sometimes|string', // Allow updating Home ID
+            'name' => 'sometimes|string|max:255',
+            'type' => 'sometimes|string',
+            'status' => 'sometimes|string'
+        ]);
+
         $device = Device::find($id);
-        
         if (!$device) {
             return response()->json(['message' => 'Device not found'], 404);
         }
 
-        $device->update($request->all());
+        $device->update($validatedData);
 
-        return response()->json([
-            'message' => 'Device updated successfully', 
-            'data' => $device
-        ]);
+        return response()->json(['message' => 'Device updated', 'data' => $device]);
     }
 
     // 4. DELETE

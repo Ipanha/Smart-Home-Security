@@ -264,32 +264,49 @@ class AdminWebController extends Controller
         $devices = $response->json()['data'] ?? [];
         return view('admin.devices', compact('devices', 'homeId'));
     }
+
     // --- DASHBOARD VIEW ---
     public function devices() { 
         $token = session('admin_token');
         if (!$token) return redirect('/admin/login');
         
         $devices = [];
-        $homes = []; // We need homes to populate the "Select Home" dropdown in Create Modal
+        $homes = [];
 
         try {
-            // Fetch Devices
-            $devResponse = Http::get('http://device-service:8000/api/all-devices');
-            if ($devResponse->successful()) {
-                $devices = $devResponse->json()['data'] ?? [];
-            }
-
-            // Fetch Homes (for the Create Device Dropdown)
+            // 1. Fetch All Homes first to create a lookup map
             $homeResponse = Http::get('http://user-home-service:8000/api/homes');
+            $homeMap = []; // Key: ID, Value: Name
+            
             if ($homeResponse->successful()) {
                 $homes = $homeResponse->json()['data'] ?? [];
+                foreach($homes as $home) {
+                    // Handle MongoDB ID format
+                    $hid = $home['id'] ?? $home['_id'] ?? ($home['id']['$oid'] ?? '');
+                    if(is_array($hid) && isset($hid['$oid'])) $hid = $hid['$oid'];
+                    
+                    if($hid) $homeMap[(string)$hid] = $home['name'];
+                }
+            }
+
+            // 2. Fetch Devices
+            $devResponse = Http::get('http://device-service:8000/api/all-devices');
+            if ($devResponse->successful()) {
+                $rawDevices = $devResponse->json()['data'] ?? [];
+                
+                // 3. Map Home Name to Device
+                $devices = array_map(function($device) use ($homeMap) {
+                    $hid = $device['home_id'] ?? '';
+                    $device['home_name'] = $homeMap[$hid] ?? 'Unknown Home';
+                    return $device;
+                }, $rawDevices);
             }
 
         } catch (\Exception $e) {}
         
         return view('admin.dashboard', [
             'devices' => $devices, 
-            'homes' => $homes, // Pass homes to view
+            'homes' => $homes, 
             'view_type' => 'devices'
         ]); 
     }

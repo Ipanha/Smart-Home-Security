@@ -243,21 +243,31 @@
             @endif
 
             @if($view_type == 'devices')
-                <div class="flex justify-between items-center mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <h2 class="text-2xl font-bold text-black">Devices Registry</h2>
-                    <button onclick="openCreateDeviceModal()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 transition-all">
-                        <span>+</span> Add Device
-                    </button>
+                    
+                    <div class="flex gap-3 w-full md:w-auto">
+                        <div class="relative w-full md:w-64">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </span>
+                            <input type="text" id="deviceSearch" onkeyup="filterDevices()" placeholder="Search device, home, or type..." 
+                                class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                        </div>
+
+                        <button onclick="openCreateDeviceModal()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 transition-all whitespace-nowrap">
+                            <span>+</span> Add Device
+                        </button>
+                    </div>
                 </div>
 
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <table class="w-full text-left">
+                    <table class="w-full text-left" id="devicesTable">
                         <thead class="bg-gray-50 border-b border-gray-100 text-gray-400 uppercase text-xs font-semibold">
                             <tr>
-                                <th class="px-6 py-4">Device Name</th>
-                                <th class="px-6 py-4">Type</th>
-                                <th class="px-6 py-4">Status</th>
-                                <th class="px-6 py-4 text-right">Actions</th>
+                                <th class="px-6 py-4">Device Details</th>
+                                <th class="px-6 py-4">Home Location</th> <th class="px-6 py-4">Status</th>
+                                <th class="px-6 py-4">Created Date</th> <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
@@ -267,15 +277,26 @@
                                 $devName = addslashes($device['name']);
                                 $devType = $device['type'] ?? 'unknown';
                                 $devStatus = $device['status'] ?? 'active';
+                                $homeName = $device['home_name'] ?? 'Unknown';
+                                // Format Date
+                                $created = isset($device['created_at']) ? \Carbon\Carbon::parse($device['created_at'])->format('M d, Y') : 'N/A';
                             @endphp
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 font-bold text-gray-800">{{ $device['name'] }}</td>
-                                <td class="px-6 py-4 capitalize text-gray-500">{{ $device['type'] }}</td>
+                            <tr class="hover:bg-gray-50 transition-colors device-row">
+                                <td class="px-6 py-4">
+                                    <div class="font-bold text-gray-800 device-name">{{ $device['name'] }}</div>
+                                    <div class="text-xs text-gray-400 uppercase tracking-wider device-type">{{ $devType }}</div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-600 font-medium device-home">
+                                    {{ $homeName }}
+                                </td>
                                 <td class="px-6 py-4">
                                     <span class="px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider 
                                     {{ $devStatus == 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600' }}">
                                         {{ $devStatus }}
                                     </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500">
+                                    {{ $created }}
                                 </td>
                                 <td class="px-6 py-4 text-right flex justify-end gap-3">
                                     @if(!empty($deviceId))
@@ -285,7 +306,7 @@
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="4" class="p-8 text-center text-gray-400">No devices online.</td></tr>
+                            <tr><td colspan="5" class="p-8 text-center text-gray-400">No devices online.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -537,6 +558,39 @@
         document.getElementById('editDeviceType').value = type;
         document.getElementById('editDeviceStatus').value = status;
         document.getElementById('editDeviceForm').action = '/admin/update-device/' + id;
+    }
+
+    function filterDevices() {
+        // 1. Get input value
+        let input = document.getElementById('deviceSearch');
+        let filter = input.value.toUpperCase();
+        
+        // 2. Get table and rows
+        let table = document.getElementById('devicesTable');
+        let tr = table.getElementsByTagName('tr');
+
+        // 3. Loop through rows (skip header)
+        for (let i = 1; i < tr.length; i++) {
+            // Get searchable elements within the row
+            let nameCol = tr[i].getElementsByClassName('device-name')[0];
+            let typeCol = tr[i].getElementsByClassName('device-type')[0];
+            let homeCol = tr[i].getElementsByClassName('device-home')[0];
+
+            if (nameCol && typeCol && homeCol) {
+                let txtName = nameCol.textContent || nameCol.innerText;
+                let txtType = typeCol.textContent || typeCol.innerText;
+                let txtHome = homeCol.textContent || homeCol.innerText;
+
+                // Check if any column matches the search term
+                if (txtName.toUpperCase().indexOf(filter) > -1 || 
+                    txtType.toUpperCase().indexOf(filter) > -1 || 
+                    txtHome.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
     }
 </script>
 </body>

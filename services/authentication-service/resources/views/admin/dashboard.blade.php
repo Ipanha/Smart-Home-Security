@@ -88,7 +88,7 @@
     <div class="flex-1 flex flex-col min-w-0 bg-white">
         
         <header class="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-8">
-            <button class="text-gray-600 hover:text-black">
+            <button class="text-gray-600 hover:text-black opacity-0">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
 
@@ -105,7 +105,9 @@
             @if($view_type == 'dashboard')
                 <div class="mb-8">
                     <h2 class="text-2xl font-bold text-black mb-6">Admin Dashboard</h2>
+                    
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        
                         <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-lg transition">
                             <div class="flex justify-between items-start">
                                 <div>
@@ -117,6 +119,7 @@
                                 </div>
                             </div>
                         </div>
+
                         <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-lg transition">
                             <div class="flex justify-between items-start">
                                 <div>
@@ -128,61 +131,95 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-lg transition">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Devices</p>
+                                    <h3 class="text-3xl font-bold text-gray-900 mt-2">{{ isset($devices) ? count($devices) : '0' }}</h3>
+                                </div>
+                                <div class="p-3 bg-emerald-50 rounded-xl text-emerald-600">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             @endif
 
             @if($view_type == 'users')
-                <div class="flex justify-between items-center mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <h2 class="text-2xl font-bold text-black">Users Management</h2>
-                    <button onclick="openCreateUserModal()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 transition-all transform hover:scale-105">
-                        <span>+</span> Create User
-                    </button>
+                    
+                    <div class="flex gap-3 w-full md:w-auto">
+                        <div class="relative w-full md:w-64">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </span>
+                            <input type="text" id="userSearch" onkeyup="filterUsers()" placeholder="Search users, homes..." 
+                                class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                        </div>
+
+                        <button onclick="openCreateUserModal()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 transition-all">
+                            <span>+</span> Create User
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <table class="w-full text-left">
+                    <table class="w-full text-left" id="usersTable">
                         <thead class="bg-gray-50 border-b border-gray-100 text-gray-400 uppercase text-xs font-semibold tracking-wider">
                             <tr>
-                                <th class="px-6 py-4 w-16 text-center">#</th>
-                                <th class="px-6 py-4">User Details</th>
+                                <th class="px-6 py-4">User Profile</th>
+                                <th class="px-6 py-4">Home</th>
                                 <th class="px-6 py-4">Role</th>
+                                <th class="px-6 py-4">Joined Date</th>
                                 <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
-                            @foreach($users as $index => $user)
+                            @foreach($users as $user)
                             @php 
-                                // FIX: Define variables here to prevent "Undefined variable" error
                                 $u = (object)$user; 
-                                $deleteId = $u->user_id ?? $u->_id ?? $u->id ?? '';
+                                $userId = $u->user_id ?? $u->id ?? '';
                                 $name = $u->name ?? 'Unknown';
                                 $email = $u->email ?? 'No Email';
                                 $role = $u->role ?? 'User';
+                                $home = $u->home_name ?? 'N/A';
+                                $date = $u->joined_date ?? 'N/A';
+                                $pic = $u->profile_pic ?? null;
                             @endphp
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-center text-gray-400 text-sm">{{ $index + 1 }}</td>
+                            <tr class="hover:bg-gray-50 transition-colors user-row">
                                 <td class="px-6 py-4">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-500 font-bold">
-                                            {{ substr($name, 0, 1) }}
-                                        </div>
+                                    <a href="/admin/users/{{ $userId }}" class="flex items-center gap-3 group">
+                                        @if($pic)
+                                            <img src="{{ $pic }}" class="w-10 h-10 rounded-full object-cover border border-gray-200 group-hover:ring-2 ring-indigo-500 transition">
+                                        @else
+                                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center text-indigo-600 font-bold group-hover:ring-2 ring-indigo-500 transition">
+                                                {{ substr($name, 0, 1) }}
+                                            </div>
+                                        @endif
                                         <div>
-                                            <div class="font-bold text-gray-900">{{ $name }}</div>
+                                            <div class="font-bold text-gray-900 group-hover:text-indigo-600 transition user-name">{{ $name }}</div>
                                             <div class="text-sm text-gray-400">{{ $email }}</div>
                                         </div>
-                                    </div>
+                                    </a>
                                 </td>
+                                <td class="px-6 py-4 text-gray-600 font-medium user-home">{{ $home }}</td>
                                 <td class="px-6 py-4">
                                     <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide {{ $role == 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-blue-50 text-blue-600' }}">
                                         {{ $role }}
                                     </span>
                                 </td>
+                                <td class="px-6 py-4 text-sm text-gray-500">{{ $date }}</td>
                                 <td class="px-6 py-4 text-right">
-                                    <button onclick="openEditUserModal('{{ $deleteId }}', '{{ $name }}', '{{ $email }}')" class="text-gray-400 hover:text-blue-600 mx-2 transition">
+                                    <button onclick="openEditUserModal('{{ $userId }}', '{{ $name }}', '{{ $email }}')" class="text-gray-400 hover:text-blue-600 mx-2 transition">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                     </button>
-                                    <button onclick="openDeleteModal('/admin/delete-user/{{ $deleteId }}', 'User: {{ $email }}')" class="text-gray-400 hover:text-red-600 mx-2 transition">
+                                    <button onclick="openDeleteModal('/admin/delete-user/{{ $userId }}', 'User: {{ $email }}')" class="text-gray-400 hover:text-red-600 mx-2 transition">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                     </button>
                                 </td>
@@ -343,11 +380,18 @@
     <div id="editUserModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
         <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md">
             <h3 class="font-bold text-2xl mb-6">Edit User</h3>
-            <form id="editUserForm" method="POST" class="space-y-4">
+            <form id="editUserForm" method="POST" enctype="multipart/form-data" class="space-y-4">
                 @csrf
                 <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Full Name</label><input type="text" name="name" id="editUserName" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl" required></div>
                 <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label><input type="email" name="email" id="editUserEmail" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl" required></div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Profile Picture</label>
+                    <input type="file" name="profile_pic" accept="image/*" class="w-full bg-gray-50 border border-gray-200 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                </div>
+
                 <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">New Password (Optional)</label><input type="password" name="password" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl"></div>
+                
                 <div class="flex justify-end gap-3 mt-8">
                     <button type="button" onclick="closeModal('editUserModal')" class="px-5 py-2.5 text-gray-500 hover:bg-gray-100 rounded-xl font-medium">Cancel</button>
                     <button class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200">Save Changes</button>
@@ -556,6 +600,28 @@
         // FIX: Added quotes and concatenation. 
         // original was: action = /admin/update-user/${id}; (Syntax Error)
         document.getElementById('editUserForm').action = '/admin/update-user/' + id; 
+    }
+    function filterUsers() {
+        let input = document.getElementById('userSearch');
+        let filter = input.value.toUpperCase();
+        let table = document.getElementById('usersTable');
+        let tr = table.getElementsByTagName('tr');
+
+        for (let i = 1; i < tr.length; i++) {
+            let nameCol = tr[i].getElementsByClassName('user-name')[0];
+            let homeCol = tr[i].getElementsByClassName('user-home')[0];
+
+            if (nameCol && homeCol) {
+                let txtName = nameCol.textContent || nameCol.innerText;
+                let txtHome = homeCol.textContent || homeCol.innerText;
+
+                if (txtName.toUpperCase().indexOf(filter) > -1 || txtHome.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
     }
 
     function openEditHomeModal(id, name) {

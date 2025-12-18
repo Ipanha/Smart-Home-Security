@@ -66,35 +66,143 @@ class AdminWebController extends Controller
 
     // --- MAIN VIEWS ---
 
+    // --- USERS LIST (Updated with Home & Date Logic) ---
     public function users() {
         $token = session('admin_token');
         if (!$token) return redirect('/admin/login');
 
         $authUsers = AuthCredential::all(); 
-        $profiles = [];
+        $userProfiles = [];
+        $userHomes = [];
 
         try {
-            $response = Http::get('http://user-home-service:8000/api/all-users');
-            if ($response->successful()) {
-                $json = $response->json();
-                $list = $json['data']['data'] ?? $json['data'] ?? [];
-                foreach ($list as $p) {
-                    $id = $p['id'] ?? $p['_id'] ?? null;
-                    if ($id) $profiles[$id] = $p['name'] ?? 'No Name';
+            // 1. Fetch Users
+            $uRes = Http::get('http://user-home-service:8000/api/all-users');
+            if ($uRes->successful()) {
+                $rawUsers = $uRes->json()['data']['data'] ?? $uRes->json()['data'] ?? [];
+                
+                // Index by ID for easy lookup
+                foreach ($rawUsers as $u) {
+                    $id = $u['id'] ?? $u['_id'] ?? null;
+                    if ($id) $userProfiles[$id] = $u;
                 }
             }
+
+            // 2. Fetch Homes (To map User -> Home)
+            $hRes = Http::get('http://user-home-service:8000/api/homes');
+            if ($hRes->successful()) {
+                $homes = $hRes->json()['data'] ?? [];
+                foreach ($homes as $home) {
+                    $homeName = $home['name'];
+                    // Map Owner
+                    $ownerId = $home['owner_id'] ?? '';
+                    if(is_array($ownerId)) $ownerId = $ownerId['$oid'];
+                    $userHomes[$ownerId] = $homeName;
+
+                    // Map Members
+                    $members = $home['members'] ?? [];
+                    foreach($members as $mid) {
+                        if(is_array($mid)) $mid = $mid['$oid'];
+                        $userHomes[$mid] = $homeName;
+                    }
+                }
+            }
+
         } catch (\Exception $e) {}
 
-        $users = $authUsers->map(function ($user) use ($profiles) {
-            if ($user->user_id === 'ADMIN_MASTER_ID') {
-                $user->name = 'System Admin';
-            } else {
-                $user->name = $profiles[$user->user_id] ?? 'Unknown ID';
-            }
-            return $user;
+        // Merge Data
+        $users = $authUsers->map(function ($auth) use ($userProfiles, $userHomes) {
+            $uid = $auth->user_id;
+            $profile = $userProfiles[$uid] ?? [];
+            
+            $auth->name = $profile['name'] ?? 'Unknown';
+            $auth->profile_pic = $profile['profile_pic'] ?? null; // Pic URL
+            $auth->home_name = $userHomes[$uid] ?? 'No Home Assigned';
+            
+            // Format Date (MongoDB dates can be tricky string/array)
+            $rawDate = $profile['created_at'] ?? now();
+            $auth->joined_date = \Carbon\Carbon::parse($rawDate)->format('M d, Y');
+            
+            return $auth;
         });
 
         return view('admin.dashboard', ['users' => $users, 'view_type' => 'users']);
+    }
+
+    // --- UPDATE USER (Handle Image Upload) ---
+    public function updateUser(Request $request, $id)
+    {
+        $data = [
+            'name' => $request->name,
+            'email' => $request->email
+        ];
+
+        // 1. Handle File Upload
+        if ($request->hasFile('profile_pic')) {
+            // Store file in public/profiles
+            $path = $request->file('profile_pic')->store('profiles', 'public');
+            // Create full URL (accessible by browser)
+            $url = asset('storage/' . $path); 
+            $data['profile_pic'] = $url;
+        }
+
+        // 2. Update Auth DB
+        $credential = AuthCredential::where('user_id', $id)->first();
+        if ($credential) {
+            $credential->email = $request->email;
+            if ($request->filled('password')) $credential->password = Hash::make($request->password);
+            $credential->save();
+        }
+
+        // 3. Update User-Home Service
+        try {
+            Http::put("http://user-home-service:8000/api/users/{$id}", $data);
+        } catch (\Exception $e) {
+            return back()->with('warning', 'Auth updated but profile sync failed.');
+        }
+
+        return back()->with('success', 'User Updated Successfully');
+    }
+
+    // --- USER DETAIL PAGE ---
+    public function userDetails($id)
+    {
+        try {
+            // 1. Get User Info
+            $uRes = Http::get("http://user-home-service:8000/api/users/{$id}");
+            $user = $uRes->json()['data'] ?? null;
+
+            if(!$user) return redirect('/admin/users')->with('error', 'User not found');
+
+            // 2. Get Home & Family Info
+            $hRes = Http::get("http://user-home-service:8000/api/users/{$id}/home-details");
+            $homeData = $hRes->json(); // Contains 'home', 'owner', 'members'
+
+            return view('admin.user_detail', compact('user', 'homeData'));
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Service unreachable');
+        }
+    }
+
+     public function deleteUser($id)
+    {
+        if (!$id || $id === 'undefined') return back()->with('error', 'Error: User ID is missing.');
+
+        $deleted = AuthCredential::where('user_id', $id)->delete();
+        if (!$deleted) $deleted = AuthCredential::where('_id', $id)->delete();
+
+        try {
+            $response = Http::delete("http://user-home-service:8000/api/users/{$id}");
+            if ($response->failed()) {
+                return back()->with('warning', 'Deleted from Auth but failed to delete profile.');
+            }
+        } catch (\Exception $e) {
+            return back()->with('warning', 'Deleted from Auth but failed to delete profile.');
+        }
+
+        if ($deleted) return back()->with('success', 'User Deleted Successfully');
+        return back()->with('error', 'User not found in Authentication Database.');
     }
 
     public function homes() { 
@@ -175,52 +283,6 @@ class AdminWebController extends Controller
         $content = json_decode($response->getContent(), true);
         $msg = $content['message'] ?? 'Error creating user';
         return back()->with('error', 'Failed: ' . $msg);
-    }
-
-    // UPDATE USER
-    public function updateUser(Request $request, $id)
-    {
-        $credential = AuthCredential::where('user_id', $id)->first();
-        if (!$credential) return back()->with('error', 'User not found.');
-
-        $credential->email = $request->email;
-        if ($request->filled('password')) $credential->password = Hash::make($request->password);
-        $credential->save();
-
-        try {
-            $response = Http::put("http://user-home-service:8000/api/users/{$id}", [
-                'name' => $request->name,
-                'email' => $request->email
-            ]);
-            if ($response->failed()) {
-                return back()->with('warning', 'Auth updated but profile update failed.');
-            }
-        } catch (\Exception $e) {
-            return back()->with('warning', 'Auth updated but profile update failed.');
-        }
-
-        return back()->with('success', 'User Updated Successfully');
-    }
-
-    // DELETE USER
-    public function deleteUser($id)
-    {
-        if (!$id || $id === 'undefined') return back()->with('error', 'Error: User ID is missing.');
-
-        $deleted = AuthCredential::where('user_id', $id)->delete();
-        if (!$deleted) $deleted = AuthCredential::where('_id', $id)->delete();
-
-        try {
-            $response = Http::delete("http://user-home-service:8000/api/users/{$id}");
-            if ($response->failed()) {
-                return back()->with('warning', 'Deleted from Auth but failed to delete profile.');
-            }
-        } catch (\Exception $e) {
-            return back()->with('warning', 'Deleted from Auth but failed to delete profile.');
-        }
-
-        if ($deleted) return back()->with('success', 'User Deleted Successfully');
-        return back()->with('error', 'User not found in Authentication Database.');
     }
 
     // --- HOME ACTIONS ----

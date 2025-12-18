@@ -8,16 +8,14 @@ use App\Models\Device;
 
 class DeviceController extends Controller
 {
-    /**
-     * Store a newly created device in storage.
-     */
+    // 1. CREATE
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'home_id' => 'required|string', // MongoDB IDs are strings
+            'home_id' => 'required|string',
             'name' => 'required|string|max:255',
-            'type' => 'required|string',   
-            'status' => 'required|string', 
+            'type' => 'required|string',
+            'status' => 'required|string',
         ]);
 
         $device = Device::create($validatedData);
@@ -28,17 +26,55 @@ class DeviceController extends Controller
         ], 201);
     }
 
-    /**
-     * Display a listing of devices for a specific home.
-     */
+    // 2. READ (All Devices for Admin Dashboard)
+    public function getAllDevices()
+    {
+        $devices = Device::all();
+        return response()->json([
+            'count' => $devices->count(),
+            'data' => $devices
+        ]);
+    }
+
+    // 2. READ (Specific Home Devices)
     public function index($homeId)
     {
         $devices = Device::where('home_id', $homeId)->get();
-
         return response()->json([
             'home_id' => $homeId,
             'count' => $devices->count(),
             'data' => $devices
         ]);
+    }
+
+    // 3. UPDATE
+    public function update(Request $request, $id)
+    {
+        $device = Device::find($id);
+        
+        if (!$device) {
+            return response()->json(['message' => 'Device not found'], 404);
+        }
+
+        $device->update($request->all());
+
+        return response()->json([
+            'message' => 'Device updated successfully', 
+            'data' => $device
+        ]);
+    }
+
+    // 4. DELETE
+    public function destroy($id)
+    {
+        $device = Device::find($id);
+        
+        if (!$device) {
+            return response()->json(['message' => 'Device not found'], 404);
+        }
+
+        $device->delete();
+
+        return response()->json(['message' => 'Device deleted successfully']);
     }
 }

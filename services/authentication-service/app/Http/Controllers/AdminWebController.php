@@ -161,22 +161,6 @@ class AdminWebController extends Controller
         ]); 
     }
 
-
-    public function devices() { 
-        $token = session('admin_token');
-        if (!$token) return redirect('/admin/login');
-        
-        $devices = [];
-        try {
-            $response = Http::get('http://device-service:8000/api/all-devices');
-            if ($response->successful()) {
-                $devices = $response->json()['data'] ?? [];
-            }
-        } catch (\Exception $e) {}
-        
-        return view('admin.dashboard', ['devices' => $devices, 'view_type' => 'devices']); 
-    }
-
     // --- USER ACTIONS ---
 
     // CREATE USER
@@ -269,25 +253,6 @@ class AdminWebController extends Controller
         return back()->with('error', 'Failed to delete home.');
     }
 
-    // --- DEVICE ACTIONS ---
-    public function createDevice(Request $request) {
-        $response = Http::post('http://device-service:8000/api/create-device', [
-            'home_id' => $request->home_id,
-            'name' => $request->name,
-            'type' => $request->type,
-            'status' => 'active'
-        ]);
-
-        if ($response->successful()) return back()->with('success', 'Device Created!');
-        return back()->with('error', 'Failed to create device.');
-    }
-
-    public function deleteDevice($id) {
-        $response = Http::delete("http://device-service:8000/api/devices/{$id}");
-        if ($response->successful()) return back()->with('success', 'Device Deleted');
-        return back()->with('error', 'Failed to delete device.');
-    }
-
     public function viewUserHomes($userId) {
         $response = Http::get("http://user-home-service:8000/api/homes?owner_id={$userId}");
         $homes = $response->json()['data'] ?? [];
@@ -298,5 +263,66 @@ class AdminWebController extends Controller
         $response = Http::get("http://device-service:8000/api/homes/{$homeId}/devices");
         $devices = $response->json()['data'] ?? [];
         return view('admin.devices', compact('devices', 'homeId'));
+    }
+    // --- DASHBOARD VIEW ---
+    public function devices() { 
+        $token = session('admin_token');
+        if (!$token) return redirect('/admin/login');
+        
+        $devices = [];
+        $homes = []; // We need homes to populate the "Select Home" dropdown in Create Modal
+
+        try {
+            // Fetch Devices
+            $devResponse = Http::get('http://device-service:8000/api/all-devices');
+            if ($devResponse->successful()) {
+                $devices = $devResponse->json()['data'] ?? [];
+            }
+
+            // Fetch Homes (for the Create Device Dropdown)
+            $homeResponse = Http::get('http://user-home-service:8000/api/homes');
+            if ($homeResponse->successful()) {
+                $homes = $homeResponse->json()['data'] ?? [];
+            }
+
+        } catch (\Exception $e) {}
+        
+        return view('admin.dashboard', [
+            'devices' => $devices, 
+            'homes' => $homes, // Pass homes to view
+            'view_type' => 'devices'
+        ]); 
+    }
+
+    // --- CREATE DEVICE ---
+    public function createDevice(Request $request) {
+        $response = Http::post('http://device-service:8000/api/create-device', [
+            'home_id' => $request->home_id,
+            'name' => $request->name,
+            'type' => $request->type,
+            'status' => $request->status ?? 'active'
+        ]);
+
+        if ($response->successful()) return back()->with('success', 'Device Created!');
+        return back()->with('error', 'Failed: ' . $response->body());
+    }
+
+    // --- UPDATE DEVICE ---
+    public function updateDevice(Request $request, $id) {
+        $response = Http::put("http://device-service:8000/api/devices/{$id}", [
+            'name' => $request->name,
+            'type' => $request->type,
+            'status' => $request->status
+        ]);
+
+        if ($response->successful()) return back()->with('success', 'Device Updated!');
+        return back()->with('error', 'Failed: ' . $response->body());
+    }
+
+    // --- DELETE DEVICE ---
+    public function deleteDevice($id) {
+        $response = Http::delete("http://device-service:8000/api/devices/{$id}");
+        if ($response->successful()) return back()->with('success', 'Device Deleted');
+        return back()->with('error', 'Failed to delete device.');
     }
 }

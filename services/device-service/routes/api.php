@@ -1,20 +1,17 @@
 <?php
+
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\DeviceController;
 
+// Create
 Route::post('/create-device', [DeviceController::class, 'store']);
-// Fix for Gateway
-Route::post('/api/create-device', [DeviceController::class, 'store']); 
 
+// Read
+Route::get('/all-devices', [DeviceController::class, 'getAllDevices']); // For Admin Dashboard
 Route::get('/homes/{homeId}/devices', [DeviceController::class, 'index']);
-Route::get('/api/homes/{homeId}/devices', [DeviceController::class, 'index']); // Gateway fix
 
-// DELETE DEVICE
-Route::delete('/devices/{id}', function ($id) {
-    \App\Models\Device::destroy($id);
-    return response()->json(['message' => 'Device Deleted']);
-});
-Route::delete('/api/devices/{id}', function ($id) { // Gateway fix
-    \App\Models\Device::destroy($id);
-    return response()->json(['message' => 'Device Deleted']);
-});
+// Update
+Route::put('/devices/{id}', [DeviceController::class, 'update']);
+
+// Delete
+Route::delete('/devices/{id}', [DeviceController::class, 'destroy']);

@@ -32,5 +32,7 @@ Route::middleware(['web'])->group(function () {
 
     // Devices
     Route::post('/admin/create-device', [AdminWebController::class, 'createDevice']);
-    Route::post('/admin/delete-device/{id}', [AdminWebController::class, 'deleteDevice']);
+    Route::delete('/admin/delete-device/{id}', [AdminWebController::class, 'deleteDevice']);
+    Route::put('/admin/update-device/{id}', [AdminWebController::class, 'updateDevice']); // NEW
+
 });

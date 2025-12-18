@@ -243,7 +243,13 @@
             @endif
 
             @if($view_type == 'devices')
-                <div class="mb-6"><h2 class="text-2xl font-bold text-black">Devices Registry</h2></div>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-black">Devices Registry</h2>
+                    <button onclick="openCreateDeviceModal()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 transition-all">
+                        <span>+</span> Add Device
+                    </button>
+                </div>
+
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <table class="w-full text-left">
                         <thead class="bg-gray-50 border-b border-gray-100 text-gray-400 uppercase text-xs font-semibold">
@@ -256,14 +262,25 @@
                         </thead>
                         <tbody class="divide-y divide-gray-50">
                             @forelse($devices as $device)
-                            @php $deviceId = $device['id'] ?? $device['_id'] ?? ''; @endphp
+                            @php 
+                                $deviceId = $device['id'] ?? $device['_id'] ?? '';
+                                $devName = addslashes($device['name']);
+                                $devType = $device['type'] ?? 'unknown';
+                                $devStatus = $device['status'] ?? 'active';
+                            @endphp
                             <tr class="hover:bg-gray-50 transition-colors">
                                 <td class="px-6 py-4 font-bold text-gray-800">{{ $device['name'] }}</td>
                                 <td class="px-6 py-4 capitalize text-gray-500">{{ $device['type'] }}</td>
-                                <td class="px-6 py-4"><span class="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-md text-xs font-bold uppercase tracking-wider">Active</span></td>
-                                <td class="px-6 py-4 text-right">
+                                <td class="px-6 py-4">
+                                    <span class="px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider 
+                                    {{ $devStatus == 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600' }}">
+                                        {{ $devStatus }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-right flex justify-end gap-3">
                                     @if(!empty($deviceId))
-                                    <button onclick="openDeleteModal('/admin/delete-device/{{ $deviceId }}', 'Device: {{ $device['name'] }}')" class="text-red-500 hover:text-red-700 text-sm font-medium">Delete</button>
+                                    <button onclick="openEditDeviceModal('{{ $deviceId }}', '{{ $devName }}', '{{ $devType }}', '{{ $devStatus }}')" class="text-amber-500 hover:text-amber-700 text-sm font-medium">Edit</button>
+                                    <button onclick="openDeleteModal('/admin/delete-device/{{ $deviceId }}', 'Device: {{ $devName }}')" class="text-red-500 hover:text-red-700 text-sm font-medium">Delete</button>
                                     @endif
                                 </td>
                             </tr>
@@ -387,7 +404,88 @@
             </form>
         </div>
     </div>
+<div id="createDeviceModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md">
+            <h3 class="font-bold text-2xl mb-6 text-gray-900">Add New Device</h3>
+            <form action="/admin/create-device" method="POST" class="space-y-4">
+                @csrf
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Select Home</label>
+                    <select name="home_id" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl" required>
+                        <option value="" disabled selected>Select a Home...</option>
+                        @if(isset($homes))
+                            @foreach($homes as $home)
+                                @php $hid = $home['id'] ?? $home['_id'] ?? ($home['id']['$oid'] ?? ''); @endphp
+                                <option value="{{ $hid }}">{{ $home['name'] }}</option>
+                            @endforeach
+                        @endif
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Device Name</label>
+                    <input type="text" name="name" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl" placeholder="e.g. Living Room Cam" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Type</label>
+                        <select name="type" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl">
+                            <option value="camera">Camera</option>
+                            <option value="sensor">Sensor</option>
+                            <option value="lock">Lock</option>
+                            <option value="light">Light</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
+                        <select name="status" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-8">
+                    <button type="button" onclick="closeModal('createDeviceModal')" class="px-5 py-2 text-gray-500">Cancel</button>
+                    <button class="px-5 py-2 bg-indigo-600 text-white rounded-xl font-bold">Add Device</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
+    <div id="editDeviceModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md">
+            <h3 class="font-bold text-2xl mb-6 text-gray-900">Edit Device</h3>
+            <form id="editDeviceForm" method="POST" class="space-y-4">
+                @csrf
+                @method('PUT')
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Device Name</label>
+                    <input type="text" name="name" id="editDeviceName" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Type</label>
+                        <select name="type" id="editDeviceType" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl">
+                            <option value="camera">Camera</option>
+                            <option value="sensor">Sensor</option>
+                            <option value="lock">Lock</option>
+                            <option value="light">Light</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
+                        <select name="status" id="editDeviceStatus" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-8">
+                    <button type="button" onclick="closeModal('editDeviceModal')" class="px-5 py-2 text-gray-500">Cancel</button>
+                    <button class="px-5 py-2 bg-amber-500 text-white rounded-xl font-bold">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
     <script>
     function closeModal(id) { 
         const modal = document.getElementById(id);
@@ -428,6 +526,17 @@
         openModal('deleteModal'); 
         document.getElementById('deleteForm').action = actionUrl; 
         document.getElementById('deleteItemName').innerText = itemName; 
+    }
+    function openCreateDeviceModal() {
+        openModal('createDeviceModal');
+    }
+
+    function openEditDeviceModal(id, name, type, status) {
+        openModal('editDeviceModal');
+        document.getElementById('editDeviceName').value = name;
+        document.getElementById('editDeviceType').value = type;
+        document.getElementById('editDeviceStatus').value = status;
+        document.getElementById('editDeviceForm').action = '/admin/update-device/' + id;
     }
 </script>
 </body>

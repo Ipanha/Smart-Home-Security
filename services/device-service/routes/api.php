@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\DeviceController;
 
+Route::get('/homes/{homeId}/devices', [DeviceController::class, 'index']);
 // Create
 Route::post('/create-device', [DeviceController::class, 'store']);
 

@@ -8,6 +8,7 @@ use App\Models\Device;
 
 class DeviceController extends Controller
 {
+    
     // 1. CREATE
     public function store(Request $request)
     {
@@ -39,7 +40,8 @@ class DeviceController extends Controller
     // 2. READ (Specific Home Devices)
     public function index($homeId)
     {
-        $devices = Device::where('home_id', $homeId)->get();
+        $devices = Device::where('home_id', (string)$homeId)->get();
+        
         return response()->json([
             'home_id' => $homeId,
             'count' => $devices->count(),

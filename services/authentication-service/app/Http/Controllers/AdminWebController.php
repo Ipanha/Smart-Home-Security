@@ -203,12 +203,37 @@ class AdminWebController extends Controller
 
             // 2. Get Home & Family Info
             $hRes = Http::get("http://user-home-service:8000/api/users/{$id}/home-details");
-            $homeData = $hRes->json(); // Contains 'home', 'owner', 'members'
+            $homeData = $hRes->json(); 
 
-            return view('admin.user_detail', compact('user', 'homeData'));
+            // 3. Get Devices (FIXED ID EXTRACTION)
+            $devices = [];
+            
+            // Check if we actually found a home
+            if (isset($homeData['home'])) {
+                $homeArr = $homeData['home'];
+                
+                // PRIORITY 1: Check standard 'id' (Laravel default)
+                $homeId = $homeArr['id'] ?? null;
+                
+                // PRIORITY 2: Check raw mongo '_id'
+                if (!$homeId && isset($homeArr['_id'])) {
+                    $val = $homeArr['_id'];
+                    $homeId = is_array($val) ? ($val['$oid'] ?? null) : $val;
+                }
+
+                // Call Device Service if we found a valid ID
+                if ($homeId) {
+                    $dRes = Http::get("http://device-service:8000/api/homes/{$homeId}/devices");
+                    if ($dRes->successful()) {
+                        $devices = $dRes->json()['data'] ?? [];
+                    }
+                }
+            }
+
+            return view('admin.user_detail', compact('user', 'homeData', 'devices'));
 
         } catch (\Exception $e) {
-            return back()->with('error', 'Service unreachable');
+            return back()->with('error', 'Service unreachable: ' . $e->getMessage());
         }
     }
 

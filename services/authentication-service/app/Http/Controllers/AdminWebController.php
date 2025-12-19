@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use App\Models\AuthCredential;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log; // Added for logging errors
 
 class AdminWebController extends Controller
 {
@@ -38,7 +39,7 @@ class AdminWebController extends Controller
         return redirect('/admin/login'); 
     }
 
-    // --- FIX: ACTUAL DASHBOARD IMPLEMENTATION ---
+    // --- DASHBOARD IMPLEMENTATION ---
     public function dashboard() { 
         $token = session('admin_token');
         if (!$token) return redirect('/admin/login');
@@ -64,8 +65,6 @@ class AdminWebController extends Controller
         ]); 
     }
 
-    // --- MAIN VIEWS ---
-
     // --- USERS LIST (Updated with Home & Date Logic) ---
     public function users() {
         $token = session('admin_token');
@@ -73,37 +72,42 @@ class AdminWebController extends Controller
 
         $authUsers = AuthCredential::all(); 
         $userProfiles = [];
-        $userHomes = [];
+        $userHomes = []; // Will store ['name' => '...', 'id' => '...']
+        $allHomes = [];  // List for the dropdown
 
         try {
             // 1. Fetch Users
             $uRes = Http::get('http://user-home-service:8000/api/all-users');
             if ($uRes->successful()) {
                 $rawUsers = $uRes->json()['data']['data'] ?? $uRes->json()['data'] ?? [];
-                
-                // Index by ID for easy lookup
                 foreach ($rawUsers as $u) {
                     $id = $u['id'] ?? $u['_id'] ?? null;
                     if ($id) $userProfiles[$id] = $u;
                 }
             }
 
-            // 2. Fetch Homes (To map User -> Home)
+            // 2. Fetch Homes (Crucial for Dropdowns & Mapping)
             $hRes = Http::get('http://user-home-service:8000/api/homes');
             if ($hRes->successful()) {
-                $homes = $hRes->json()['data'] ?? [];
-                foreach ($homes as $home) {
-                    $homeName = $home['name'];
+                $allHomes = $hRes->json()['data'] ?? []; // <--- Save this for the View
+                
+                foreach ($allHomes as $home) {
+                    // Extract ID
+                    $hid = $home['id'] ?? $home['_id'] ?? ($home['id']['$oid'] ?? '');
+                    if (is_array($hid)) $hid = $hid['$oid'];
+                    
+                    $homeInfo = ['name' => $home['name'], 'id' => (string)$hid];
+
                     // Map Owner
                     $ownerId = $home['owner_id'] ?? '';
                     if(is_array($ownerId)) $ownerId = $ownerId['$oid'];
-                    $userHomes[$ownerId] = $homeName;
+                    $userHomes[(string)$ownerId] = $homeInfo;
 
                     // Map Members
                     $members = $home['members'] ?? [];
                     foreach($members as $mid) {
                         if(is_array($mid)) $mid = $mid['$oid'];
-                        $userHomes[$mid] = $homeName;
+                        $userHomes[(string)$mid] = $homeInfo;
                     }
                 }
             }
@@ -112,21 +116,29 @@ class AdminWebController extends Controller
 
         // Merge Data
         $users = $authUsers->map(function ($auth) use ($userProfiles, $userHomes) {
-            $uid = $auth->user_id;
+            $uid = (string)$auth->user_id;
             $profile = $userProfiles[$uid] ?? [];
             
             $auth->name = $profile['name'] ?? 'Unknown';
-            $auth->profile_pic = $profile['profile_pic'] ?? null; // Pic URL
-            $auth->home_name = $userHomes[$uid] ?? 'No Home Assigned';
+            $auth->email = $profile['email'] ?? $auth->email; // Prefer profile email
+            $auth->profile_pic = $profile['profile_pic'] ?? null;
             
-            // Format Date (MongoDB dates can be tricky string/array)
+            // Map Home Name AND ID
+            $auth->home_name = $userHomes[$uid]['name'] ?? 'No Home Assigned';
+            $auth->home_id = $userHomes[$uid]['id'] ?? ''; // <--- Pass ID for Edit Modal
+            
             $rawDate = $profile['created_at'] ?? now();
             $auth->joined_date = \Carbon\Carbon::parse($rawDate)->format('M d, Y');
             
             return $auth;
         });
 
-        return view('admin.dashboard', ['users' => $users, 'view_type' => 'users']);
+        // Pass $homes to the view so the dropdown works
+        return view('admin.dashboard', [
+            'users' => $users, 
+            'homes' => $allHomes, // <--- THIS FIXES "NOT SHOW LIST HOME"
+            'view_type' => 'users'
+        ]);
     }
 
     // --- UPDATE USER (Handle Image Upload) ---
@@ -137,13 +149,10 @@ class AdminWebController extends Controller
             'email' => $request->email
         ];
 
-        // 1. Handle File Upload
+        // 1. Handle Picture
         if ($request->hasFile('profile_pic')) {
-            // Store file in public/profiles
             $path = $request->file('profile_pic')->store('profiles', 'public');
-            // Create full URL (accessible by browser)
-            $url = asset('storage/' . $path); 
-            $data['profile_pic'] = $url;
+            $data['profile_pic'] = asset('storage/' . $path);
         }
 
         // 2. Update Auth DB
@@ -154,11 +163,29 @@ class AdminWebController extends Controller
             $credential->save();
         }
 
-        // 3. Update User-Home Service
-        try {
-            Http::put("http://user-home-service:8000/api/users/{$id}", $data);
-        } catch (\Exception $e) {
-            return back()->with('warning', 'Auth updated but profile sync failed.');
+        // 3. Update User Profile
+        $profileRes = Http::put("http://user-home-service:8000/api/users/{$id}", $data);
+        if ($profileRes->failed()) {
+             return back()->with('error', 'Failed to update profile: ' . $profileRes->body());
+        }
+
+        // 4. Update Home Assignment (FIXED)
+        if ($request->filled('home_id')) {
+            $userIdStr = (string)$id; 
+            
+            $homeRes = Http::post("http://user-home-service:8000/api/homes/{$request->home_id}/members", [
+                'user_id' => $userIdStr
+            ]);
+
+            // STOP AND SHOW CLEAN ERROR IF IT FAILS
+            if ($homeRes->failed()) {
+                // Log the messy HTML detail for the developer to check later
+                Log::error('Home Assignment Failed for User ' . $id);
+                Log::error('API Response: ' . $homeRes->body());
+
+                // Show a clean message to the user
+                return back()->with('error', 'Profile updated, but Home assignment failed. Please check the system logs or try again.');
+            }
         }
 
         return back()->with('success', 'User Updated Successfully');
@@ -273,20 +300,77 @@ class AdminWebController extends Controller
 
     // CREATE USER
     public function createUser(Request $request) {
-        $data = $request->only(['name', 'email', 'password', 'password_confirmation']);
-        $server = ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'];
-        $proxy = Request::create('/api/register', 'POST', [], [], [], $server, json_encode($data));
-        $response = Route::dispatch($proxy);
+        $request->validate([
+            'name' => 'required',
+            'email' => 'required|email',
+            'password' => 'required|confirmed|min:8',
+            'profile_pic' => 'nullable|image|max:10240',
+            'home_id' => 'nullable|string'
+        ]);
 
-        if ($response->status() === 201) return back()->with('success', 'User Created Successfully!');
+        $profilePicUrl = null;
+        if ($request->hasFile('profile_pic')) {
+            $path = $request->file('profile_pic')->store('profiles', 'public');
+            $profilePicUrl = asset('storage/' . $path);
+        }
+
+        // 1. Create User
+        $userResponse = Http::post('http://user-home-service:8000/api/users', [
+            'name' => $request->name,
+            'email' => $request->email,
+            'profile_pic' => $profilePicUrl
+        ]);
+
+        if ($userResponse->failed()) {
+            return back()->with('error', 'API Error: ' . $userResponse->body());
+        }
+
+        // --- ROBUST ID EXTRACTION ---
+        $userData = $userResponse->json()['data'];
         
-        $content = json_decode($response->getContent(), true);
-        $msg = $content['message'] ?? 'Error creating user';
-        return back()->with('error', 'Failed: ' . $msg);
+        // Try getting ID from various common MongoDB JSON formats
+        $userId = null;
+        if (isset($userData['id'])) {
+            $userId = $userData['id'];
+        } elseif (isset($userData['_id'])) {
+            $val = $userData['_id'];
+            $userId = is_array($val) ? ($val['$oid'] ?? null) : $val;
+        }
+
+        if (!$userId) {
+            return back()->with('error', 'Critical: Could not extract User ID from API response.');
+        }
+        
+        // Cast to string
+        $userId = (string)$userId;
+
+        // 2. Create Auth
+        try {
+            AuthCredential::create([
+                'user_id' => $userId,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => 'home_owner'
+            ]);
+        } catch (\Exception $e) {
+            return back()->with('error', 'Profile created but Email already exists in Admin system.');
+        }
+
+        // 3. Assign Home
+        if ($request->filled('home_id')) {
+            $homeRes = Http::post("http://user-home-service:8000/api/homes/{$request->home_id}/members", [
+                'user_id' => $userId 
+            ]);
+            
+            // Debugging: If this fails, show why on screen
+            if ($homeRes->failed()) {
+                return back()->with('warning', 'User created, but Home API failed. Check logs for details.');
+            }
+        }
+
+        return back()->with('success', 'User Created and Assigned to Home!');
     }
 
-    // --- HOME ACTIONS ----
-    
     // --- HOME ACTIONS (FIXED) ---
 
     public function createHome(Request $request) {

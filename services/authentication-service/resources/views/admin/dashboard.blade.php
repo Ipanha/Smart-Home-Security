@@ -191,6 +191,7 @@
                                 $home = $u->home_name ?? 'N/A';
                                 $date = $u->joined_date ?? 'N/A';
                                 $pic = $u->profile_pic ?? null;
+                                $currentHomeId = $u->home_id ?? '';
                             @endphp
                             <tr class="hover:bg-gray-50 transition-colors user-row">
                                 <td class="px-6 py-4">
@@ -216,7 +217,7 @@
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-500">{{ $date }}</td>
                                 <td class="px-6 py-4 text-right">
-                                    <button onclick="openEditUserModal('{{ $userId }}', '{{ $name }}', '{{ $email }}')" class="text-gray-400 hover:text-blue-600 mx-2 transition">
+                                    <button onclick="openEditUserModal('{{ $userId }}', '{{ $name }}', '{{ $email }}', '{{ $currentHomeId }}')" class="text-gray-400 hover:text-blue-600 mx-2 transition">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                     </button>
                                     <button onclick="openDeleteModal('/admin/delete-user/{{ $userId }}', 'User: {{ $email }}')" class="text-gray-400 hover:text-red-600 mx-2 transition">
@@ -361,14 +362,36 @@
     </div>
 
     <div id="createUserModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 transition-all">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md transform scale-100 transition-all">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md transform scale-100 transition-all max-h-[90vh] overflow-y-auto">
             <h3 class="font-bold text-2xl mb-6 text-gray-900">Create New User</h3>
-            <form action="/admin/create-user" method="POST" class="space-y-4">
+            
+            <form action="/admin/create-user" method="POST" enctype="multipart/form-data" class="space-y-4">
                 @csrf
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Profile Picture</label>
+                    <input type="file" name="profile_pic" accept="image/*" class="w-full bg-gray-50 border border-gray-200 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 rounded-xl">
+                </div>
+
                 <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Full Name</label><input type="text" name="name" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" required></div>
                 <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label><input type="email" name="email" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" required></div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Assign to Home (Optional)</label>
+                    <select name="home_id" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="" selected>-- No Home --</option>
+                        @if(isset($homes))
+                            @foreach($homes as $home)
+                                @php $hid = $home['id'] ?? $home['_id'] ?? ($home['id']['$oid'] ?? ''); @endphp
+                                <option value="{{ $hid }}">{{ $home['name'] }}</option>
+                            @endforeach
+                        @endif
+                    </select>
+                </div>
+
                 <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Password</label><input type="password" name="password" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" required></div>
                 <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Confirm Password</label><input type="password" name="password_confirmation" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" required></div>
+                
                 <div class="flex justify-end gap-3 mt-8">
                     <button type="button" onclick="closeModal('createUserModal')" class="px-5 py-2.5 text-gray-500 hover:bg-gray-100 rounded-xl font-medium transition">Cancel</button>
                     <button class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition">Create Account</button>
@@ -382,12 +405,26 @@
             <h3 class="font-bold text-2xl mb-6">Edit User</h3>
             <form id="editUserForm" method="POST" enctype="multipart/form-data" class="space-y-4">
                 @csrf
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Profile Picture</label>
+                    <input type="file" name="profile_pic" accept="image/*" class="w-full bg-gray-50 border border-gray-200 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 rounded-xl">
+                </div>
+
                 <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Full Name</label><input type="text" name="name" id="editUserName" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl" required></div>
                 <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label><input type="email" name="email" id="editUserEmail" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl" required></div>
                 
                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Profile Picture</label>
-                    <input type="file" name="profile_pic" accept="image/*" class="w-full bg-gray-50 border border-gray-200 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Update Home Assignment</label>
+                    <select name="home_id" id="editUserHome" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl">
+                        <option value="">-- Don't Change --</option>
+                        @if(isset($homes))
+                            @foreach($homes as $home)
+                                @php $hid = $home['id'] ?? $home['_id'] ?? ($home['id']['$oid'] ?? ''); @endphp
+                                <option value="{{ $hid }}">{{ $home['name'] }}</option>
+                            @endforeach
+                        @endif
+                    </select>
                 </div>
 
                 <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">New Password (Optional)</label><input type="password" name="password" class="w-full bg-gray-50 border-gray-200 border p-3 rounded-xl"></div>
@@ -593,12 +630,18 @@
     function openCreateUserModal() { openModal('createUserModal'); }
     function openCreateHomeModal() { openModal('createHomeModal'); }
     
-    function openEditUserModal(id, name, email) {
+    function openEditUserModal(id, name, email, homeId) {
         openModal('editUserModal');
         document.getElementById('editUserName').value = name;
         document.getElementById('editUserEmail').value = email;
-        // FIX: Added quotes and concatenation. 
-        // original was: action = /admin/update-user/${id}; (Syntax Error)
+        
+        // Set the current home in the dropdown
+        if(homeId) {
+            document.getElementById('editUserHome').value = homeId;
+        } else {
+            document.getElementById('editUserHome').value = "";
+        }
+
         document.getElementById('editUserForm').action = '/admin/update-user/' + id; 
     }
     function filterUsers() {

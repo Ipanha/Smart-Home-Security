@@ -28,9 +28,9 @@
                 <h1 class="text-3xl font-bold text-gray-900">{{ $user['name'] }}</h1>
                 <p class="text-gray-500 mt-1">{{ $user['email'] }}</p>
                 <div class="flex gap-3 mt-4 justify-center md:justify-start">
-                    <span class="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-sm font-bold uppercase tracking-wide">
+                    {{-- <span class="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-sm font-bold uppercase tracking-wide">
                         {{ $user['role'] ?? 'Member' }}
-                    </span>
+                    </span> --}}
                     <span class="px-4 py-1.5 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
                         Joined: {{ isset($user['created_at']) ? \Carbon\Carbon::parse($user['created_at'])->format('M d, Y') : 'Unknown' }}
                     </span>
@@ -61,32 +61,6 @@
                              {{ substr($homeData['owner']['name'] ?? '?', 0, 1) }}
                         </div>
                         <span class="font-medium text-gray-800">{{ $homeData['owner']['name'] ?? 'Unknown' }}</span>
-                    </div>
-                </div>
-
-                <div>
-                    <h3 class="font-bold text-gray-900 mb-4">Family Members</h3>
-                    <div class="space-y-3">
-                        @forelse($homeData['members'] as $member)
-                            <div class="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl hover:shadow-sm transition">
-                                <div class="flex items-center gap-3">
-                                    @if(isset($member['profile_pic']) && $member['profile_pic'])
-                                        <img src="{{ $member['profile_pic'] }}" class="w-10 h-10 rounded-full object-cover">
-                                    @else
-                                        <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold">
-                                            {{ substr($member['name'], 0, 1) }}
-                                        </div>
-                                    @endif
-                                    <div>
-                                        <div class="font-bold text-gray-800 text-sm">{{ $member['name'] }}</div>
-                                        <div class="text-xs text-gray-400">{{ $member['email'] }}</div>
-                                    </div>
-                                </div>
-                                <span class="text-xs font-bold text-gray-300">MEMBER</span>
-                            </div>
-                        @empty
-                            <p class="text-gray-400 text-sm italic">No other members in this home.</p>
-                        @endforelse
                     </div>
                 </div>
             </div>

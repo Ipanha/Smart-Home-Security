@@ -23,7 +23,7 @@ Route::middleware(['web'])->group(function () {
     // Users
     Route::post('/admin/create-user', [AdminWebController::class, 'createUser']);
     Route::post('/admin/update-user/{id}', [AdminWebController::class, 'updateUser']);
-    Route::post('/admin/delete-user/{id}', [AdminWebController::class, 'deleteUser']);
+    Route::delete('/admin/delete-user/{id}', [AdminWebController::class, 'deleteUser']);
     Route::get('/admin/users/{id}', [AdminWebController::class, 'userDetails']);
     // Homes
     Route::post('/admin/create-home', [AdminWebController::class, 'createHome']);

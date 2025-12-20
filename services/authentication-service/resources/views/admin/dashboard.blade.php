@@ -232,14 +232,26 @@
             @endif
 
             @if($view_type == 'homes')
-                <div class="flex justify-between items-center mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <h2 class="text-2xl font-bold text-black">Homes Management</h2>
-                    <button onclick="openCreateHomeModal()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 transition-all">
-                        <span>+</span> Create Home
-                    </button>
+                    
+                    <div class="flex gap-3 w-full md:w-auto">
+                        <div class="relative w-full md:w-64">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </span>
+                            <input type="text" id="homeSearch" onkeyup="filterHomes()" placeholder="Search home or owner..." 
+                                class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                        </div>
+
+                        <button onclick="openCreateHomeModal()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 transition-all whitespace-nowrap">
+                            <span>+</span> Create Home
+                        </button>
+                    </div>
                 </div>
+
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <table class="w-full text-left">
+                    <table class="w-full text-left" id="homesTable">
                         <thead class="bg-gray-50 border-b border-gray-100 text-gray-400 uppercase text-xs font-semibold">
                             <tr>
                                 <th class="px-6 py-4 w-16 text-center">#</th>
@@ -251,23 +263,21 @@
                         <tbody class="divide-y divide-gray-50">
                         @forelse($homes as $index => $home)
                         @php 
-                            // 1. SAFE ID EXTRACTION FOR MONGODB
                             $rawId = $home['id'] ?? $home['_id'] ?? '';
                             $homeId = is_array($rawId) ? ($rawId['$oid'] ?? '') : $rawId;
-
-                            // 2. SAFE NAME (Escaping quotes so JS doesn't break on names like "Panha's Home")
                             $homeName = $home['name'] ?? 'Unnamed';
                             $jsName = addslashes($homeName);
                         @endphp
-                        <tr class="hover:bg-gray-50 transition-colors">
+                        <tr class="hover:bg-gray-50 transition-colors home-row">
                             <td class="px-6 py-4 text-center text-gray-400 text-sm">{{ $index + 1 }}</td>
-                            <td class="px-6 py-4 font-bold text-gray-800">{{ $homeName }}</td>
-                            <td class="px-6 py-4 text-gray-600">{{ $home['owner_name'] ?? 'Unknown' }}</td>
+                            
+                            <td class="px-6 py-4 font-bold text-gray-800 home-name">{{ $homeName }}</td>
+                            
+                            <td class="px-6 py-4 text-gray-600 home-owner">{{ $home['owner_name'] ?? 'Unknown' }}</td>
+                            
                             <td class="px-6 py-4 text-right flex justify-end gap-3">
                                 @if(!empty($homeId))
-                                    {{-- FIX: Use the sanitized $jsName and $homeId --}}
                                     <button onclick="openEditHomeModal('{{ $homeId }}', '{{ $jsName }}')" class="text-amber-500 hover:text-amber-700 text-sm font-medium">Edit</button>
-                                    
                                     <button onclick="openDeleteModal('/admin/delete-home/{{ $homeId }}', 'Home: {{ $jsName }}')" class="text-red-500 hover:text-red-700 text-sm font-medium">Delete</button>
                                 @endif
                             </td>
@@ -697,6 +707,36 @@
 
         // Set form action
         document.getElementById('editDeviceForm').action = '/admin/update-device/' + id;
+    }
+
+    function filterHomes() {
+        // 1. Get input value
+        let input = document.getElementById('homeSearch');
+        let filter = input.value.toUpperCase();
+
+        // 2. Get table and rows
+        let table = document.getElementById('homesTable');
+        let tr = table.getElementsByTagName('tr');
+
+        // 3. Loop through rows (start at 1 to skip header)
+        for (let i = 1; i < tr.length; i++) {
+            // Get searchable elements within the row
+            let nameCol = tr[i].getElementsByClassName('home-name')[0];
+            let ownerCol = tr[i].getElementsByClassName('home-owner')[0];
+
+            if (nameCol && ownerCol) {
+                let txtName = nameCol.textContent || nameCol.innerText;
+                let txtOwner = ownerCol.textContent || ownerCol.innerText;
+
+                // Check if name OR owner matches the search term
+                if (txtName.toUpperCase().indexOf(filter) > -1 || 
+                    txtOwner.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
     }
 
     function filterDevices() {

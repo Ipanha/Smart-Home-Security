@@ -24,13 +24,15 @@ class AdminWebController extends Controller
         $content = json_decode($response->getContent(), true);
 
         if ($response->status() === 200) {
-            if (!str_contains($request->email, 'admin')) {
-                return back()->withErrors(['msg' => 'Admins Only.']);
-            }
-            session(['admin_token' => $content['access_token']]);
-            // CHANGED: Redirect to dashboard instead of users
-            return redirect('/admin/dashboard');
-        }
+
+    if (($content['role'] ?? null) !== 'admin') {
+        return back()->withErrors(['msg' => 'Admins Only.']);
+    }
+
+    session(['admin_token' => $content['access_token']]);
+    return redirect('/admin/dashboard');
+    }
+
         return back()->withErrors(['msg' => 'Invalid Credentials']);
     }
 
